@@ -1,0 +1,219 @@
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ThemedText } from '@/components/themed-text';
+import { ProductGrid } from '@/features/home/components';
+import { CategoryItem, getCategories, getPagedProducts, ProductItem } from '@/services/catalog';
+import { palette, styles } from '@/features/categories/categories.styles';
+
+const SORT_OPTIONS = [
+  { label: 'Сначала новые', value: '-created_at' },
+  { label: 'Дешевле', value: 'real_price' },
+  { label: 'Дороже', value: '-real_price' },
+  { label: 'В наличии', value: '-in_stock_order' },
+];
+
+export default function CategoriesScreen() {
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<CategoryItem | null>(null);
+  const [products, setProducts] = useState<ProductItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [ordering, setOrdering] = useState('-created_at');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [discountOnly, setDiscountOnly] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadCategories() {
+      try {
+        setLoading(true);
+        const data = await getCategories();
+        if (!alive) return;
+
+        setCategories(data);
+        const firstParent = data.find((category) => !category.parent) || null;
+        setSelectedCategory(firstParent);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    }
+
+    loadCategories();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadProducts() {
+      if (!selectedCategory) return;
+
+      try {
+        setProductsLoading(true);
+        const data = await getPagedProducts({
+          page: 1,
+          pageSize: 20,
+          categoryId: selectedCategory.id,
+          ordering,
+          minPrice,
+          maxPrice,
+          hasDiscount: discountOnly,
+        });
+        if (alive) setProducts(data);
+      } finally {
+        if (alive) setProductsLoading(false);
+      }
+    }
+
+    loadProducts();
+    return () => {
+      alive = false;
+    };
+  }, [selectedCategory, ordering, minPrice, maxPrice, discountOnly]);
+
+  const parentCategories = categories.filter((category) => !category.parent);
+  const selectedParentId = selectedCategory?.parent || selectedCategory?.id || null;
+  const childCategories = selectedParentId
+    ? categories.filter((category) => category.parent === selectedParentId)
+    : [];
+
+  function selectCategory(category: CategoryItem) {
+    if (selectedCategory?.id === category.id) return;
+
+    setSelectedCategory(category);
+    setProducts([]);
+  }
+
+  function resetFilters() {
+    setOrdering('-created_at');
+    setMinPrice('');
+    setMaxPrice('');
+    setDiscountOnly(false);
+  }
+
+  return (
+    <SafeAreaView edges={['top']} style={styles.root}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <ThemedText style={styles.title}>Категории</ThemedText>
+          <ThemedText style={styles.subtitle}>Выбирайте раздел и сразу смотрите товары</ThemedText>
+        </View>
+
+        {loading ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator color={palette.primary} />
+          </View>
+        ) : (
+          <>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.parentList}>
+              {parentCategories.map((category) => {
+                const isActive = selectedParentId === category.id;
+                return (
+                  <TouchableOpacity
+                    activeOpacity={0.82}
+                    key={category.id}
+                    style={[styles.parentChip, isActive && styles.parentChipActive]}
+                    onPress={() => selectCategory(category)}>
+                    <ThemedText style={[styles.parentText, isActive && styles.parentTextActive]}>
+                      {category.title}
+                    </ThemedText>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {childCategories.length ? (
+              <View style={styles.subcategoryPanel}>
+                <ThemedText style={styles.subcategoryTitle}>Подкатегории</ThemedText>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subcategoryList}>
+                  {childCategories.map((category) => {
+                    const isActive = selectedCategory?.id === category.id;
+                    return (
+                      <TouchableOpacity
+                        activeOpacity={0.82}
+                        key={category.id}
+                        style={[styles.subcategoryChip, isActive && styles.subcategoryChipActive]}
+                        onPress={() => selectCategory(category)}>
+                        <ThemedText style={styles.subcategoryText}>{category.title}</ThemedText>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            ) : null}
+
+            <View style={styles.filtersPanel}>
+              <View style={styles.filtersHeader}>
+                <ThemedText style={styles.filtersTitle}>Фильтры</ThemedText>
+                <TouchableOpacity hitSlop={8} onPress={resetFilters}>
+                  <ThemedText style={styles.resetText}>Сбросить</ThemedText>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortList}>
+                {SORT_OPTIONS.map((option) => {
+                  const isActive = ordering === option.value;
+                  return (
+                    <TouchableOpacity
+                      activeOpacity={0.82}
+                      key={option.value}
+                      style={[styles.sortChip, isActive && styles.sortChipActive]}
+                      onPress={() => setOrdering(option.value)}>
+                      <ThemedText style={[styles.sortText, isActive && styles.sortTextActive]}>
+                        {option.label}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              <View style={styles.priceFilterRow}>
+                <TextInput
+                  value={minPrice}
+                  onChangeText={setMinPrice}
+                  keyboardType="numeric"
+                  placeholder="Цена от"
+                  placeholderTextColor={palette.secondary}
+                  style={styles.priceInput}
+                />
+                <TextInput
+                  value={maxPrice}
+                  onChangeText={setMaxPrice}
+                  keyboardType="numeric"
+                  placeholder="Цена до"
+                  placeholderTextColor={palette.secondary}
+                  style={styles.priceInput}
+                />
+                <TouchableOpacity
+                  activeOpacity={0.82}
+                  style={[styles.discountChip, discountOnly && styles.discountChipActive]}
+                  onPress={() => setDiscountOnly((value) => !value)}>
+                  <ThemedText style={[styles.discountText, discountOnly && styles.discountTextActive]}>
+                    Скидки
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <ThemedText style={styles.sectionTitle}>{selectedCategory?.title || 'Товары'}</ThemedText>
+            {productsLoading ? (
+              <View style={styles.loadingWrap}>
+                <ActivityIndicator color={palette.primary} />
+              </View>
+            ) : products.length ? (
+              <ProductGrid items={products} />
+            ) : (
+              <ThemedText style={styles.emptyText}>В этой категории пока нет товаров</ThemedText>
+            )}
+          </>
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}

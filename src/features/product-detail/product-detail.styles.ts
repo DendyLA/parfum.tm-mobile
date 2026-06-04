@@ -1,0 +1,342 @@
+import { StyleSheet } from 'react-native';
+import { MixedStyleDeclaration } from 'react-native-render-html';
+
+export const palette = {
+  primary: '#212121',
+  secondary: '#aeaeae',
+  border: '#e4e4e4',
+  sale: '#ea4040',
+  success: '#178a52',
+  surface: '#ffffff',
+  soft: '#f6f6f6',
+};
+
+export const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: palette.surface,
+  },
+  content: {
+    paddingHorizontal: 16,
+    paddingBottom: 168,
+    gap: 18,
+  },
+  header: {
+    minHeight: 54,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    borderColor: palette.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerIconButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    borderColor: palette.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.surface,
+  },
+  cartBadge: {
+    position: 'absolute',
+    right: -2,
+    top: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.sale,
+    borderWidth: 1,
+    borderColor: palette.surface,
+  },
+  cartBadgeText: {
+    color: palette.surface,
+    fontSize: 10,
+    lineHeight: 12,
+    fontWeight: '900',
+  },
+  headerTitle: {
+    color: palette.primary,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '700',
+  },
+  imageWrap: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 10,
+    backgroundColor: palette.soft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  image: {
+    width: '88%',
+    height: '88%',
+  },
+  imageFallback: {
+    color: palette.secondary,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  gallery: {
+    gap: 10,
+    paddingRight: 16,
+  },
+  galleryItem: {
+    width: 74,
+    height: 74,
+    borderRadius: 8,
+    backgroundColor: palette.soft,
+    borderWidth: 1,
+    borderColor: palette.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  galleryItemActive: {
+    borderColor: palette.primary,
+    borderWidth: 2,
+  },
+  galleryImage: {
+    width: '88%',
+    height: '88%',
+  },
+  title: {
+    color: palette.primary,
+    fontSize: 25,
+    lineHeight: 31,
+    fontWeight: '700',
+  },
+  category: {
+    color: palette.secondary,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 10,
+  },
+  price: {
+    color: palette.primary,
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: '800',
+  },
+  salePrice: {
+    color: palette.sale,
+  },
+  oldPrice: {
+    color: palette.secondary,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '500',
+    textDecorationLine: 'line-through',
+  },
+  section: {
+    gap: 10,
+    borderTopWidth: 1,
+    borderTopColor: palette.border,
+    paddingTop: 16,
+  },
+  sectionTitle: {
+    color: palette.primary,
+    fontSize: 17,
+    lineHeight: 23,
+    fontWeight: '700',
+  },
+  description: {
+    color: palette.primary,
+    fontSize: 15,
+    lineHeight: 23,
+    fontWeight: '400',
+  },
+  variationList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  variationChip: {
+    minHeight: 38,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: palette.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.surface,
+  },
+  variationChipActive: {
+    borderColor: palette.primary,
+    backgroundColor: palette.primary,
+  },
+  variationChipDisabled: {
+    opacity: 0.45,
+  },
+  variationText: {
+    color: palette.primary,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  variationTextActive: {
+    color: palette.surface,
+  },
+  variationTextDisabled: {
+    color: palette.secondary,
+  },
+  bottomBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 28,
+    backgroundColor: palette.surface,
+    borderTopWidth: 1,
+    borderTopColor: palette.border,
+    gap: 12,
+  },
+  quantityRow: {
+    minHeight: 42,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  quantityLabel: {
+    color: palette.primary,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '700',
+  },
+  quantityControl: {
+    height: 40,
+    minWidth: 132,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: palette.surface,
+    overflow: 'hidden',
+  },
+  quantityButton: {
+    width: 42,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quantityButtonDisabled: {
+    opacity: 0.45,
+  },
+  quantityText: {
+    minWidth: 34,
+    color: palette.primary,
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  addedNotice: {
+    minHeight: 34,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#eaf8f1',
+  },
+  addedNoticeText: {
+    color: palette.success,
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
+  cartButton: {
+    height: 52,
+    borderRadius: 8,
+    backgroundColor: palette.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cartButtonDisabled: {
+    backgroundColor: palette.border,
+  },
+  cartButtonText: {
+    color: palette.surface,
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: '700',
+  },
+  loadingWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  statusText: {
+    color: palette.secondary,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+});
+
+export const descriptionHtmlBaseStyle: MixedStyleDeclaration = {
+  color: palette.primary,
+  fontSize: 15,
+  lineHeight: 23,
+  fontWeight: '400',
+};
+
+export const descriptionHtmlTags: Readonly<Record<string, MixedStyleDeclaration>> = {
+  p: {
+    marginTop: 0,
+    marginBottom: 10,
+  },
+  div: {
+    marginTop: 0,
+    marginBottom: 10,
+  },
+  ul: {
+    marginTop: 0,
+    marginBottom: 10,
+    paddingLeft: 18,
+  },
+  ol: {
+    marginTop: 0,
+    marginBottom: 10,
+    paddingLeft: 18,
+  },
+  li: {
+    marginBottom: 6,
+  },
+  strong: {
+    fontWeight: '700',
+  },
+  b: {
+    fontWeight: '700',
+  },
+};

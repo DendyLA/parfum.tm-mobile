@@ -1,0 +1,212 @@
+import { Href, useRouter } from 'expo-router';
+import { ArrowLeft, Check, ShoppingBag } from 'lucide-react-native';
+import { useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ThemedText } from '@/components/themed-text';
+import { palette, styles } from '@/features/checkout/checkout.styles';
+import { createOrder } from '@/services/orders';
+import { useCartStore } from '@/store/cart';
+
+function formatPrice(value: number) {
+  return `${Math.ceil(value)} TMT`;
+}
+
+const catalogHref = '/' as Href;
+
+function isValidPhone(value: string) {
+  const digits = value.replace(/\D/g, '');
+  return digits.length >= 7 && digits.length <= 15;
+}
+
+export default function CheckoutScreen() {
+  const router = useRouter();
+  const items = useCartStore((state) => state.items);
+  const clear = useCartStore((state) => state.clear);
+  const totalPrice = useCartStore((state) => state.totalPrice());
+  const totalQuantity = useCartStore((state) => state.totalQuantity());
+
+  const [firstName, setFirstName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [comment, setComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
+
+  const canSubmit = Boolean(firstName.trim() && phone.trim() && address.trim() && items.length && !submitting);
+
+  async function submitOrder() {
+    if (!items.length) {
+      setError('Корзина пустая. Добавьте товары перед оформлением.');
+      return;
+    }
+
+    if (!firstName.trim() || !phone.trim() || !address.trim()) {
+      setError('Заполните имя, телефон и адрес.');
+      return;
+    }
+
+    if (!isValidPhone(phone)) {
+      setError('Введите корректный номер телефона.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setError('');
+
+      const response = await createOrder({
+        firstName,
+        phone,
+        address,
+        comment,
+        items,
+        totalPrice,
+      });
+
+      clear();
+      setCreatedOrderId(response.order_id);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Не удалось оформить заказ.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (!items.length && !createdOrderId) {
+    return (
+      <SafeAreaView style={styles.root}>
+        <View style={styles.successWrap}>
+          <View style={styles.emptyIcon}>
+            <ShoppingBag color={palette.primary} size={34} strokeWidth={2} />
+          </View>
+          <ThemedText style={styles.successTitle}>Корзина пустая</ThemedText>
+          <ThemedText style={styles.successText}>Добавьте товары в корзину, чтобы оформить заказ.</ThemedText>
+          <TouchableOpacity activeOpacity={0.86} style={styles.submitButton} onPress={() => router.replace(catalogHref)}>
+            <ThemedText style={styles.submitButtonText}>Перейти в каталог</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (createdOrderId) {
+    return (
+      <SafeAreaView style={styles.root}>
+        <View style={styles.successWrap}>
+          <View style={styles.successIcon}>
+            <Check color={palette.success} size={38} strokeWidth={2.4} />
+          </View>
+          <ThemedText style={styles.successTitle}>Заказ принят</ThemedText>
+          <ThemedText style={styles.successText}>
+            Номер заказа #{createdOrderId}. Мы свяжемся с вами для подтверждения.
+          </ThemedText>
+          <TouchableOpacity activeOpacity={0.86} style={styles.submitButton} onPress={() => router.replace(catalogHref)}>
+            <ThemedText style={styles.submitButtonText}>Вернуться в каталог</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.root}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
+        <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.iconButton} onPress={() => router.back()}>
+              <ArrowLeft color={palette.primary} size={22} strokeWidth={2.2} />
+            </TouchableOpacity>
+            <ThemedText style={styles.headerTitle}>Оформление</ThemedText>
+            <View style={styles.headerSpacer} />
+          </View>
+
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Контакты</ThemedText>
+
+            <View style={styles.field}>
+              <ThemedText style={styles.label}>Имя</ThemedText>
+              <TextInput
+                value={firstName}
+                onChangeText={setFirstName}
+                placeholder="Например, Азат"
+                placeholderTextColor={palette.secondary}
+                style={styles.input}
+                returnKeyType="next"
+              />
+            </View>
+
+            <View style={styles.field}>
+              <ThemedText style={styles.label}>Телефон</ThemedText>
+              <TextInput
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="+993..."
+                placeholderTextColor={palette.secondary}
+                style={styles.input}
+                keyboardType="phone-pad"
+              />
+            </View>
+
+            <View style={styles.field}>
+              <ThemedText style={styles.label}>Адрес</ThemedText>
+              <TextInput
+                value={address}
+                onChangeText={setAddress}
+                placeholder="Город, улица, дом"
+                placeholderTextColor={palette.secondary}
+                style={[styles.input, styles.multilineInput]}
+                multiline
+              />
+            </View>
+
+            <View style={styles.field}>
+              <ThemedText style={styles.label}>Комментарий</ThemedText>
+              <TextInput
+                value={comment}
+                onChangeText={setComment}
+                placeholder="Удобное время, детали доставки"
+                placeholderTextColor={palette.secondary}
+                style={[styles.input, styles.multilineInput]}
+                multiline
+              />
+            </View>
+
+            {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
+          </View>
+
+          <View style={styles.orderPreview}>
+            <View style={styles.previewRow}>
+              <ThemedText style={styles.previewLabel}>Товары</ThemedText>
+              <ThemedText style={styles.previewValue}>{totalQuantity} шт.</ThemedText>
+            </View>
+            <View style={styles.previewRow}>
+              <ThemedText style={styles.previewLabel}>Сумма</ThemedText>
+              <ThemedText style={styles.previewValue}>{formatPrice(totalPrice)}</ThemedText>
+            </View>
+          </View>
+        </ScrollView>
+
+        <View style={styles.bottomBar}>
+          <View style={styles.totalRow}>
+            <ThemedText style={styles.totalLabel}>К оплате</ThemedText>
+            <ThemedText style={styles.totalPrice}>{formatPrice(totalPrice)}</ThemedText>
+          </View>
+          <TouchableOpacity
+            activeOpacity={0.86}
+            disabled={!canSubmit}
+            style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
+            onPress={submitOrder}>
+            {submitting ? (
+              <ActivityIndicator color={palette.surface} />
+            ) : (
+              <ThemedText style={styles.submitButtonText}>Отправить заказ</ThemedText>
+            )}
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
