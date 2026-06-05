@@ -390,7 +390,7 @@ export const styles = StyleSheet.create({
         flexDirection: "row",
         flexWrap: "wrap",
         justifyContent: "space-between",
-        rowGap: 18,
+        rowGap: 20,
     },
     emptyText: {
         color: palette.secondary,
@@ -399,7 +399,10 @@ export const styles = StyleSheet.create({
         fontWeight: "500",
     },
     productCard: {
-        width: "48%",
+        width: "47.8%",
+        flexBasis: "47.8%",
+        maxWidth: "47.8%",
+        minWidth: 0,
         minHeight: 300,
     },
     productImageWrap: {
@@ -436,7 +439,7 @@ export const styles = StyleSheet.create({
     },
     productTitle: {
         color: palette.primary,
-        fontSize: 15,
+        fontSize: 14,
         lineHeight: 20,
         fontWeight: "600",
         marginTop: 12,
@@ -455,6 +458,7 @@ export const styles = StyleSheet.create({
         alignItems: "baseline",
         gap: 8,
         marginTop: 10,
+        flexWrap: "wrap",
     },
     price: {
         color: palette.primary,

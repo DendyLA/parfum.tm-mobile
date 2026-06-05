@@ -28,6 +28,7 @@ import {
     ProductItem,
     searchCatalog,
 } from "@/services/catalog";
+import { getCacheMeta } from "@/services/cache";
 import { useCartStore } from "@/store/cart";
 
 const PAGE_SIZE = 10;
@@ -54,6 +55,7 @@ export default function HomeScreen() {
     const [feedLoading, setFeedLoading] = useState(false);
     const [feedHasMore, setFeedHasMore] = useState(true);
     const [showFloatingCart, setShowFloatingCart] = useState(false);
+    const [cacheUpdatedAt, setCacheUpdatedAt] = useState<string | null>(null);
     const totalQuantity = useCartStore((state) => state.totalQuantity());
     const isOffline =
         netInfo.isConnected === false || netInfo.isInternetReachable === false;
@@ -68,6 +70,7 @@ export default function HomeScreen() {
             setFeedProducts(data.special);
             setFeedPage(2);
             setFeedHasMore(data.special.length >= 8);
+            refreshCacheMeta();
         } catch (requestError) {
             setError(
                 requestError instanceof Error
@@ -77,6 +80,21 @@ export default function HomeScreen() {
         } finally {
             setLoading(false);
         }
+    }
+
+    async function refreshCacheMeta() {
+        const metas = await Promise.all([
+            getCacheMeta("current-promotion"),
+            getCacheMeta("promotions"),
+            getCacheMeta("categories"),
+            getCacheMeta("products:/products/?page_size=8&in_stock=true"),
+        ]);
+        const dates = metas
+            .map((meta) => meta?.savedAt)
+            .filter((date): date is string => Boolean(date))
+            .sort();
+
+        setCacheUpdatedAt(dates.length ? dates[dates.length - 1] : null);
     }
 
     useEffect(() => {
@@ -234,7 +252,10 @@ export default function HomeScreen() {
                         onSelectCategory={selectCategory}
                     />
 
-                    <OfflineBanner visible={isOffline} />
+                    <OfflineBanner
+                        visible={isOffline}
+                        updatedAt={cacheUpdatedAt}
+                    />
 
                     {hasActiveFilter ? (
                         <ActiveResults

@@ -66,14 +66,16 @@ export const styles = StyleSheet.create({
         fontWeight: "800",
     },
     hero: {
-        minHeight: 164,
+        minHeight: 156,
         overflow: "hidden",
         borderRadius: 8,
         backgroundColor: palette.soft,
+        alignItems: "center",
+        justifyContent: "center",
     },
     heroImage: {
         width: "100%",
-        aspectRatio: 16 / 8,
+        aspectRatio: 16 / 7.5,
     },
     title: {
         color: palette.primary,
@@ -142,6 +144,7 @@ export const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: palette.primary,
+        alignSelf: "center",
     },
     catalogButtonText: {
         color: palette.surface,

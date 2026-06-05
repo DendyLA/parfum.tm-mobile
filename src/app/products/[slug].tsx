@@ -1,3 +1,4 @@
+import { useNetInfo } from "@react-native-community/netinfo";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -10,7 +11,6 @@ import {
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
     ScrollView,
     TouchableOpacity,
     useWindowDimensions,
@@ -19,6 +19,7 @@ import {
 import RenderHTML from "react-native-render-html";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { ProductDetailSkeleton } from "@/components/skeleton";
 import { ThemedText } from "@/components/themed-text";
 import { getProductBySlug, ProductDetail } from "@/services/catalog";
 import {
@@ -43,6 +44,7 @@ function getTextFromHtml(value: string) {
 
 export default function ProductDetailScreen() {
     const router = useRouter();
+    const netInfo = useNetInfo();
     const { width } = useWindowDimensions();
     const { slug } = useLocalSearchParams<{ slug: string }>();
     const [product, setProduct] = useState<ProductDetail | null>(null);
@@ -59,6 +61,8 @@ export default function ProductDetailScreen() {
     const isFavorite = useFavoriteStore((state) =>
         product ? state.isFavorite(product.id) : false
     );
+    const isOffline =
+        netInfo.isConnected === false || netInfo.isInternetReachable === false;
 
     useEffect(() => {
         let alive = true;
@@ -98,7 +102,9 @@ export default function ProductDetailScreen() {
             } catch (requestError) {
                 if (alive) {
                     setError(
-                        requestError instanceof Error
+                        isOffline
+                            ? "Нет интернета. Этот товар еще не сохранен для оффлайна."
+                            : requestError instanceof Error
                             ? requestError.message
                             : "Не удалось загрузить товар"
                     );
@@ -112,17 +118,12 @@ export default function ProductDetailScreen() {
         return () => {
             alive = false;
         };
-    }, [slug]);
+    }, [isOffline, slug]);
 
     if (loading) {
         return (
             <SafeAreaView style={styles.root}>
-                <View style={styles.loadingWrap}>
-                    <ActivityIndicator color={palette.primary} />
-                    <ThemedText style={styles.statusText}>
-                        Загружаем товар
-                    </ThemedText>
-                </View>
+                <ProductDetailSkeleton />
             </SafeAreaView>
         );
     }
@@ -132,7 +133,7 @@ export default function ProductDetailScreen() {
             <SafeAreaView style={styles.root}>
                 <View style={styles.loadingWrap}>
                     <ThemedText style={styles.statusText}>
-                        Товар не найден
+                        {error || "Товар не найден"}
                     </ThemedText>
                     <TouchableOpacity
                         style={styles.backButton}

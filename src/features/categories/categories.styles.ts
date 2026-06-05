@@ -13,11 +13,11 @@ export const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: palette.surface,
     },
-  content: {
-    paddingHorizontal: 16,
-    paddingBottom: 104,
-    gap: 18,
-  },
+    content: {
+        paddingHorizontal: 16,
+        paddingBottom: 112,
+        gap: 18,
+    },
     header: {
         minHeight: 58,
         justifyContent: "center",
@@ -157,9 +157,11 @@ export const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: 8,
+        flexWrap: "wrap",
     },
     priceInput: {
         flex: 1,
+        minWidth: 118,
         height: 42,
         borderRadius: 8,
         borderWidth: 1,

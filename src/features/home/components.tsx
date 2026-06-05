@@ -1,6 +1,6 @@
 import { Image } from "expo-image";
 import { Href, useRouter } from "expo-router";
-import { Heart, ShoppingBag, X } from "lucide-react-native";
+import { Bell, Heart, ShoppingBag, X } from "lucide-react-native";
 import { ReactNode, useEffect, useRef } from "react";
 import {
     ActivityIndicator,
@@ -11,6 +11,7 @@ import {
 } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
+import { HomeSkeleton, ProductGridSkeleton } from "@/components/skeleton";
 import {
     CategoryItem,
     CurrentPromotion,
@@ -53,6 +54,19 @@ export function HomeHeader() {
                 </ThemedText>
             </View>
             <View style={styles.headerActions}>
+                {__DEV__ ? (
+                    <TouchableOpacity
+                        activeOpacity={0.85}
+                        style={styles.basketButton}
+                        onPress={() => router.push("/push-debug" as Href)}
+                    >
+                        <Bell
+                            color={palette.primary}
+                            size={21}
+                            strokeWidth={2}
+                        />
+                    </TouchableOpacity>
+                ) : null}
                 <TouchableOpacity
                     activeOpacity={0.85}
                     style={styles.basketButton}
@@ -415,9 +429,7 @@ export function ActiveResults({
         <View style={styles.activeResults}>
             <SectionHeader title={title} action="Сброс" onAction={onReset} />
             {loading ? (
-                <View style={styles.inlineLoader}>
-                    <ActivityIndicator color={palette.primary} />
-                </View>
+                <ProductGridSkeleton count={4} />
             ) : (
                 <>
                     <ProductGrid items={products} />
@@ -462,14 +474,7 @@ export function WhatsNewCard({ promotion }: { promotion?: CurrentPromotion }) {
 }
 
 export function LoadingCard() {
-    return (
-        <View style={styles.loadingCard}>
-            <ActivityIndicator color={palette.primary} />
-            <ThemedText style={styles.loadingText}>
-                Загружаем витрину
-            </ThemedText>
-        </View>
-    );
+    return <HomeSkeleton />;
 }
 
 export function ErrorCard({ onRetry }: { onRetry: () => void }) {

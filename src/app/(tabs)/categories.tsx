@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { OfflineBanner } from "@/components/offline-banner";
+import { ProductGridSkeleton } from "@/components/skeleton";
 import { ThemedText } from "@/components/themed-text";
 import { palette, styles } from "@/features/categories/categories.styles";
 import { ProductGrid } from "@/features/home/components";
@@ -20,12 +21,38 @@ import {
     getPagedProducts,
     ProductItem,
 } from "@/services/catalog";
+import { getCacheMeta } from "@/services/cache";
 
 const SORT_OPTIONS = [
     { label: "Сначала новые", value: "-created_at" },
     { label: "Дешевле", value: "real_price" },
     { label: "Дороже", value: "-real_price" },
 ];
+
+function getProductsCacheKey({
+    categoryId,
+    ordering,
+    minPrice,
+    maxPrice,
+    hasDiscount,
+}: {
+    categoryId: number;
+    ordering: string;
+    minPrice: string;
+    maxPrice: string;
+    hasDiscount: boolean;
+}) {
+    const params = new URLSearchParams();
+    params.append("page", "1");
+    params.append("page_size", "20");
+    params.append("in_stock", "true");
+    params.append("category", String(categoryId));
+    params.append("ordering", ordering);
+    if (minPrice.trim()) params.append("min_price", minPrice.trim());
+    if (maxPrice.trim()) params.append("max_price", maxPrice.trim());
+    if (hasDiscount) params.append("has_discount", "true");
+    return `products:/products/?${params.toString()}`;
+}
 
 export default function CategoriesScreen() {
     const netInfo = useNetInfo();
@@ -44,6 +71,7 @@ export default function CategoriesScreen() {
     const [minPrice, setMinPrice] = useState("");
     const [maxPrice, setMaxPrice] = useState("");
     const [discountOnly, setDiscountOnly] = useState(false);
+    const [cacheUpdatedAt, setCacheUpdatedAt] = useState<string | null>(null);
     const isOffline =
         netInfo.isConnected === false || netInfo.isInternetReachable === false;
 
@@ -81,6 +109,8 @@ export default function CategoriesScreen() {
                 const firstParent =
                     data.find((category) => !category.parent) || null;
                 setSelectedCategory(firstParent);
+                const meta = await getCacheMeta("categories");
+                if (alive) setCacheUpdatedAt(meta?.savedAt || null);
             } finally {
                 if (alive) setLoading(false);
             }
@@ -142,6 +172,25 @@ export default function CategoriesScreen() {
                     hasDiscount: discountOnly,
                 });
                 if (alive) setProducts(data);
+                const metas = await Promise.all([
+                    getCacheMeta("categories"),
+                    getCacheMeta(
+                        getProductsCacheKey({
+                            categoryId: selectedCategory.id,
+                            ordering,
+                            minPrice,
+                            maxPrice,
+                            hasDiscount: discountOnly,
+                        })
+                    ),
+                ]);
+                const dates = metas
+                    .map((meta) => meta?.savedAt)
+                    .filter((date): date is string => Boolean(date))
+                    .sort();
+                if (alive && dates.length) {
+                    setCacheUpdatedAt(dates[dates.length - 1]);
+                }
             } finally {
                 if (alive) setProductsLoading(false);
             }
@@ -191,7 +240,10 @@ export default function CategoriesScreen() {
                     </ThemedText>
                 </View>
 
-                <OfflineBanner visible={isOffline} />
+                <OfflineBanner
+                    visible={isOffline}
+                    updatedAt={cacheUpdatedAt}
+                />
 
                 {loading ? (
                     <View style={styles.loadingWrap}>
@@ -374,9 +426,7 @@ export default function CategoriesScreen() {
                             {selectedCategory?.title || "Товары"}
                         </ThemedText>
                         {productsLoading ? (
-                            <View style={styles.loadingWrap}>
-                                <ActivityIndicator color={palette.primary} />
-                            </View>
+                            <ProductGridSkeleton count={6} />
                         ) : products.length ? (
                             <ProductGrid items={products} />
                         ) : (

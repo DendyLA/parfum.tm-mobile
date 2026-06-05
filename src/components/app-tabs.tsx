@@ -39,20 +39,20 @@ export default function AppTabs() {
                 tabBarInactiveTintColor: palette.secondary,
                 tabBarHideOnKeyboard: true,
                 tabBarStyle: {
-                    height: 76,
+                    height: 84,
                     borderTopColor: palette.border,
                     backgroundColor: palette.surface,
-                    paddingTop: 6,
-                    paddingBottom: 10,
+                    paddingTop: 8,
+                    paddingBottom: 14,
                 },
                 tabBarItemStyle: {
-                    paddingVertical: 3,
+                    paddingVertical: 4,
                 },
                 tabBarLabelStyle: {
                     fontSize: 11,
                     lineHeight: 13,
                     fontWeight: "600",
-                    marginTop: 2,
+                    marginTop: 3,
                 },
                 tabBarBadgeStyle: {
                     minWidth: 18,

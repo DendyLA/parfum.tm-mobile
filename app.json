@@ -16,8 +16,9 @@
                 "foregroundImage": "./assets/images/parfum-android-foreground.png",
                 "monochromeImage": "./assets/images/parfum-android-monochrome.png"
             },
+            "googleServicesFile": "./google-services.json",
             "predictiveBackGestureEnabled": false,
-            "package": "com.dendyla.mobile"
+            "package": "com.aquafandei.parfum.tm"
         },
         "web": {
             "output": "static",
