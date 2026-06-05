@@ -1,8 +1,6 @@
 import { useNetInfo } from "@react-native-community/netinfo";
-import { useRouter } from "expo-router";
-import { ShoppingBag } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
-import { ScrollView, TouchableOpacity, View } from "react-native";
+import { ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { OfflineBanner } from "@/components/offline-banner";
@@ -29,12 +27,10 @@ import {
     searchCatalog,
 } from "@/services/catalog";
 import { getCacheMeta } from "@/services/cache";
-import { useCartStore } from "@/store/cart";
 
 const PAGE_SIZE = 10;
 
 export default function HomeScreen() {
-    const router = useRouter();
     const netInfo = useNetInfo();
     const scrollRef = useRef<ScrollView>(null);
     const [homeData, setHomeData] = useState<HomeData | null>(null);
@@ -54,9 +50,7 @@ export default function HomeScreen() {
     const [feedPage, setFeedPage] = useState(1);
     const [feedLoading, setFeedLoading] = useState(false);
     const [feedHasMore, setFeedHasMore] = useState(true);
-    const [showFloatingCart, setShowFloatingCart] = useState(false);
     const [cacheUpdatedAt, setCacheUpdatedAt] = useState<string | null>(null);
-    const totalQuantity = useCartStore((state) => state.totalQuantity());
     const isOffline =
         netInfo.isConnected === false || netInfo.isInternetReachable === false;
 
@@ -215,7 +209,6 @@ export default function HomeScreen() {
     }) {
         const { layoutMeasurement, contentOffset, contentSize } =
             event.nativeEvent;
-        setShowFloatingCart(contentOffset.y > 150);
 
         const distanceFromBottom =
             contentSize.height - (layoutMeasurement.height + contentOffset.y);
@@ -308,29 +301,6 @@ export default function HomeScreen() {
                         </>
                     ) : null}
                 </ScrollView>
-
-                {showFloatingCart ? (
-                    <TouchableOpacity
-                        activeOpacity={0.85}
-                        style={styles.floatingCartButton}
-                        onPress={() => router.push("/cart")}
-                    >
-                        <ShoppingBag
-                            color="#ffffff"
-                            size={22}
-                            strokeWidth={2.2}
-                        />
-                        {totalQuantity ? (
-                            <View style={styles.floatingCartBadge}>
-                                <ThemedText
-                                    style={styles.floatingCartBadgeText}
-                                >
-                                    {totalQuantity}
-                                </ThemedText>
-                            </View>
-                        ) : null}
-                    </TouchableOpacity>
-                ) : null}
             </SafeAreaView>
         </ThemedView>
     );
