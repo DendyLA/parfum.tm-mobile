@@ -1,77 +1,124 @@
-import { Tabs } from 'expo-router';
-import { Grid3X3, Heart, Home, ShoppingBag } from 'lucide-react-native';
-import { ColorValue } from 'react-native';
+﻿import { Tabs } from "expo-router";
+import { Grid3X3, Heart, Home, ShoppingBag } from "lucide-react-native";
+import { ColorValue } from "react-native";
+
+import { useCartStore } from "@/store/cart";
+import { useFavoriteStore } from "@/store/favorites";
 
 const palette = {
-  primary: '#212121',
-  secondary: '#8c8c8c',
-  border: '#e4e4e4',
-  surface: '#ffffff',
+    primary: "#212121",
+    secondary: "#8c8c8c",
+    border: "#e4e4e4",
+    sale: "#ea4040",
+    surface: "#ffffff",
 };
 
 type TabIconProps = {
-  color: ColorValue;
-  size: number;
+    color: ColorValue;
+    size: number;
 };
 
 function iconColor(color: ColorValue) {
-  return String(color);
+    return String(color);
 }
 
 export default function AppTabs() {
-  return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: palette.primary,
-        tabBarInactiveTintColor: palette.secondary,
-        tabBarStyle: {
-          height: 68,
-          borderTopColor: palette.border,
-          backgroundColor: palette.surface,
-          paddingTop: 6,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '700',
-        },
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Главная',
-          tabBarIcon: ({ color, size }: TabIconProps) => (
-            <Home color={iconColor(color)} size={size} strokeWidth={2.2} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="categories"
-        options={{
-          title: 'Категории',
-          tabBarIcon: ({ color, size }: TabIconProps) => (
-            <Grid3X3 color={iconColor(color)} size={size} strokeWidth={2.2} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="favorites"
-        options={{
-          title: 'Избранное',
-          tabBarIcon: ({ color, size }: TabIconProps) => (
-            <Heart color={iconColor(color)} size={size} strokeWidth={2.2} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="cart"
-        options={{
-          title: 'Корзина',
-          tabBarIcon: ({ color, size }: TabIconProps) => (
-            <ShoppingBag color={iconColor(color)} size={size} strokeWidth={2.2} />
-          ),
-        }}
-      />
-    </Tabs>
-  );
+    const cartItems = useCartStore((state) => state.items);
+    const favoriteItems = useFavoriteStore((state) => state.items);
+    const totalQuantity = cartItems.reduce(
+        (sum, item) => sum + item.quantity,
+        0
+    );
+    const totalFavorites = favoriteItems.length;
+
+    return (
+        <Tabs
+            screenOptions={{
+                headerShown: false,
+                tabBarActiveTintColor: palette.primary,
+                tabBarInactiveTintColor: palette.secondary,
+                tabBarHideOnKeyboard: true,
+                tabBarStyle: {
+                    height: 76,
+                    borderTopColor: palette.border,
+                    backgroundColor: palette.surface,
+                    paddingTop: 6,
+                    paddingBottom: 10,
+                },
+                tabBarItemStyle: {
+                    paddingVertical: 3,
+                },
+                tabBarLabelStyle: {
+                    fontSize: 11,
+                    lineHeight: 13,
+                    fontWeight: "600",
+                    marginTop: 2,
+                },
+                tabBarBadgeStyle: {
+                    minWidth: 18,
+                    height: 18,
+                    borderRadius: 9,
+                    backgroundColor: palette.sale,
+                    color: palette.surface,
+                    fontSize: 10,
+                    fontWeight: "800",
+                },
+            }}
+        >
+            <Tabs.Screen
+                name="index"
+                options={{
+                    title: "Главная",
+                    tabBarIcon: ({ color, size }: TabIconProps) => (
+                        <Home
+                            color={iconColor(color)}
+                            size={Math.min(size, 22)}
+                            strokeWidth={2}
+                        />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="categories"
+                options={{
+                    title: "Категории",
+                    tabBarIcon: ({ color, size }: TabIconProps) => (
+                        <Grid3X3
+                            color={iconColor(color)}
+                            size={Math.min(size, 22)}
+                            strokeWidth={2}
+                        />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="favorites"
+                options={{
+                    tabBarBadge: totalFavorites > 0 ? String(totalFavorites) : undefined,
+                    title: "Избранное",
+                    tabBarIcon: ({ color, size }: TabIconProps) => (
+                        <Heart
+                            color={iconColor(color)}
+                            size={Math.min(size, 22)}
+                            strokeWidth={2}
+                        />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="cart"
+                options={{
+                    tabBarBadge: totalQuantity > 0 ? String(totalQuantity) : undefined,
+                    title: "Корзина",
+                    tabBarIcon: ({ color, size }: TabIconProps) => (
+                        <ShoppingBag
+                            color={iconColor(color)}
+                            size={Math.min(size, 22)}
+                            strokeWidth={2}
+                        />
+                    ),
+                }}
+            />
+        </Tabs>
+    );
 }

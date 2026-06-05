@@ -36,14 +36,19 @@ export function AnimatedSplashOverlay() {
                 })}
             style={styles.backgroundSolidColor}
         >
-            <Animated.View entering={logoKeyframe.duration(760)} style={styles.splashContent}>
+            <Animated.View
+                entering={logoKeyframe.duration(760)}
+                style={styles.splashContent}
+            >
                 <Image
                     style={styles.splashLogo}
                     contentFit="contain"
                     source={require("@/assets/images/parfum-logo.png")}
                 />
                 <View style={styles.splashAccent} />
-                <Animated.Text style={styles.splashText}>Beauty Store</Animated.Text>
+                <Animated.Text style={styles.splashText}>
+                    Beauty Store
+                </Animated.Text>
             </Animated.View>
         </Animated.View>
     );

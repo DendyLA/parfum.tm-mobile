@@ -1,4 +1,5 @@
 import { absoluteMediaUrl, apiGet, asList } from "./api";
+import { withCache } from "./cache";
 
 export type TranslationMap = Record<
     string,
@@ -16,14 +17,22 @@ export type ApiProduct = {
     price?: string | number | null;
     discount_price?: string | number | null;
     image?: string | null;
-    gallery?: Array<{ id: number; image?: string | null; alt_text?: string | null }>;
+    gallery?: Array<{
+        id: number;
+        image?: string | null;
+        alt_text?: string | null;
+    }>;
     variations?: Array<{
         id: number;
         value?: string;
         color_hex?: string | null;
         is_active?: boolean;
         variation_type?: { id: number; code?: string; name?: string };
-        gallery?: Array<{ id: number; image?: string | null; alt_text?: string | null }>;
+        gallery?: Array<{
+            id: number;
+            image?: string | null;
+            alt_text?: string | null;
+        }>;
     }>;
     count?: number;
 };
@@ -41,14 +50,22 @@ export type ProductItem = {
 export type ProductDetail = ProductItem & {
     description: string;
     count?: number;
-    gallery: Array<{ id: number; image: string | null; altText?: string | null }>;
+    gallery: Array<{
+        id: number;
+        image: string | null;
+        altText?: string | null;
+    }>;
     variations: Array<{
         id: number;
         value?: string;
         colorHex?: string | null;
         isActive?: boolean;
         typeName?: string;
-        gallery?: Array<{ id: number; image: string | null; altText?: string | null }>;
+        gallery?: Array<{
+            id: number;
+            image: string | null;
+            altText?: string | null;
+        }>;
     }>;
 };
 
@@ -57,6 +74,13 @@ export type PromoItem = {
     title: string;
     subtitle: string;
     image: string | null;
+    link?: string;
+};
+
+export type PromotionDetail = PromoItem & {
+    description: string;
+    targetCategory?: number | null;
+    discountOnly?: boolean;
 };
 
 export type CategoryItem = {
@@ -74,6 +98,15 @@ type ApiCategory = {
     children?: ApiCategory[];
 };
 
+type ApiPromotion = {
+    id: number;
+    translations?: TranslationMap;
+    image?: string | null;
+    target_category?: number | null;
+    discount_only?: boolean;
+    link?: string;
+};
+
 type PaginatedResponse<T> = {
     results?: T[];
     next?: string | null;
@@ -84,6 +117,7 @@ export type CurrentPromotion = {
     title: string;
     text: string | null;
     image: string | null;
+    link?: string;
 };
 
 function pickTranslation(
@@ -152,89 +186,152 @@ export function mapProductDetail(product: ApiProduct): ProductDetail {
 }
 
 export async function getCurrentPromotion() {
-    const promo = await apiGet<CurrentPromotion>("/mobile/promotions/current/");
-    return {
-        ...promo,
-        image: absoluteMediaUrl(promo.image),
-    };
+    return withCache("current-promotion", async () => {
+        const promo = await apiGet<CurrentPromotion>(
+            "/mobile/promotions/current/"
+        );
+        return {
+            ...promo,
+            image: absoluteMediaUrl(promo.image),
+        };
+    });
 }
 
 export async function getPromotions() {
-    const data = await apiGet<
-        | Array<{
-              id: number;
-              translations?: TranslationMap;
-              image?: string | null;
-          }>
-        | {
-              results?: Array<{
+    return withCache("promotions", async () => {
+        const data = await apiGet<
+            | Array<{
                   id: number;
                   translations?: TranslationMap;
                   image?: string | null;
-              }>;
-          }
-    >("/promotions/?active=true&page_size=8");
+                  link?: string;
+              }>
+            | {
+                  results?: Array<{
+                      id: number;
+                      translations?: TranslationMap;
+                      image?: string | null;
+                      link?: string;
+                  }>;
+              }
+        >("/promotions/?active=true&page_size=8");
 
-    return asList(data).map((promo) => ({
-        id: promo.id,
-        title: pickTranslation(promo.translations, "title") || "Акция",
-        subtitle:
-            pickTranslation(promo.translations, "description") ||
-            "Специальное предложение",
-        image: absoluteMediaUrl(promo.image),
-    }));
+        return asList(data).map((promo) => ({
+            id: promo.id,
+            title: pickTranslation(promo.translations, "title") || "Акция",
+            subtitle:
+                pickTranslation(promo.translations, "description") ||
+                "Специальное предложение",
+            image: absoluteMediaUrl(promo.image),
+            link: promo.link,
+        }));
+    });
+}
+
+export async function getPromotionById(id: string | number) {
+    return withCache(`promotion:${id}`, async () => {
+        const promo = await apiGet<ApiPromotion>(`/promotions/${id}/`);
+        const description = pickTranslation(
+            promo.translations,
+            "description"
+        );
+
+        return {
+            id: promo.id,
+            title: pickTranslation(promo.translations, "title") || "Акция",
+            subtitle: description
+                ? description.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
+                : "Специальное предложение",
+            description,
+            image: absoluteMediaUrl(promo.image),
+            link: promo.link,
+            targetCategory: promo.target_category,
+            discountOnly: promo.discount_only,
+        };
+    });
+}
+
+export function getPromotionCatalogParams(link?: string) {
+    if (!link) return null;
+
+    const query = link.includes("?") ? link.split("?")[1] : link;
+    const params = new URLSearchParams(query);
+    const categoryId = Number(params.get("category"));
+
+    if (!Number.isFinite(categoryId) || categoryId <= 0) {
+        return null;
+    }
+
+    return {
+        categoryId,
+        hasDiscount:
+            params.get("has_discount") === "true" ||
+            params.get("discount_only") === "true",
+    };
 }
 
 export async function getCategories() {
-    const categories: ApiCategory[] = [];
-    let nextUrl: string | null = "/categories/?page_size=100";
+    return withCache("categories", async () => {
+        const categories: ApiCategory[] = [];
+        let nextUrl: string | null = "/categories/?page_size=100";
 
-    while (nextUrl) {
-        const data: ApiCategory[] | PaginatedResponse<ApiCategory> =
-            await apiGet<ApiCategory[] | PaginatedResponse<ApiCategory>>(nextUrl);
+        while (nextUrl) {
+            const data: ApiCategory[] | PaginatedResponse<ApiCategory> =
+                await apiGet<ApiCategory[] | PaginatedResponse<ApiCategory>>(
+                    nextUrl
+                );
 
-        if (Array.isArray(data)) {
-            categories.push(...data);
-            nextUrl = null;
-        } else {
-            categories.push(...(Array.isArray(data.results) ? data.results : []));
-            nextUrl = data.next || null;
+            if (Array.isArray(data)) {
+                categories.push(...data);
+                nextUrl = null;
+            } else {
+                categories.push(
+                    ...(Array.isArray(data.results) ? data.results : [])
+                );
+                nextUrl = data.next || null;
+            }
         }
-    }
 
-    const seen = new Set<number>();
-    const flattened: CategoryItem[] = [];
+        const seen = new Set<number>();
+        const flattened: CategoryItem[] = [];
 
-    function addCategory(category: ApiCategory) {
-        if (seen.has(category.id)) return;
+        function addCategory(category: ApiCategory) {
+            if (seen.has(category.id)) return;
 
-        seen.add(category.id);
-        flattened.push({
-            id: category.id,
-            title:
-                pickTranslation(category.translations, "name") ||
-                category.slug ||
-                "Category",
-            slug: category.slug,
-            parent: category.parent || null,
-        });
+            seen.add(category.id);
+            flattened.push({
+                id: category.id,
+                title:
+                    pickTranslation(category.translations, "name") ||
+                    category.slug ||
+                    "Категория",
+                slug: category.slug,
+                parent: category.parent || null,
+            });
 
-        category.children?.forEach(addCategory);
-    }
+            category.children?.forEach(addCategory);
+        }
 
-    categories.forEach(addCategory);
+        categories.forEach(addCategory);
 
-    return flattened;
+        return flattened;
+    });
 }
 
 export async function getProducts(path: string) {
-    const data = await apiGet<ApiProduct[] | { results?: ApiProduct[] }>(path);
-    return asList(data).map(mapProduct);
+    return withCache(`products:${path}`, async () => {
+        const data = await apiGet<ApiProduct[] | { results?: ApiProduct[] }>(
+            path
+        );
+        return asList(data).map(mapProduct);
+    });
 }
 
 export async function getProductBySlug(slug: string) {
-    const data = await apiGet<ApiProduct>(`/products/${slug}/`);
-    return mapProductDetail(data);
+    return withCache(`product:${slug}`, async () => {
+        const data = await apiGet<ApiProduct>(`/products/${slug}/`);
+        return mapProductDetail(data);
+    });
 }
 
 export async function searchCatalog(query: string, limit = 20) {
@@ -242,10 +339,12 @@ export async function searchCatalog(query: string, limit = 20) {
     params.append("search", query);
     params.append("limit", String(limit));
 
-    const data = await apiGet<{ products?: ApiProduct[] }>(
-        `/products/search/full?${params.toString()}`
-    );
-    return asList(data.products).map(mapProduct);
+    return withCache(`search:${params.toString()}`, async () => {
+        const data = await apiGet<{ products?: ApiProduct[] }>(
+            `/products/search/full?${params.toString()}`
+        );
+        return asList(data.products).map(mapProduct);
+    });
 }
 
 export async function getPagedProducts({

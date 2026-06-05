@@ -1,53 +1,53 @@
 {
-  "expo": {
-    "name": "mobile",
-    "slug": "mobile",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/images/parfum-app-icon.png",
-    "scheme": "mobile",
-    "userInterfaceStyle": "automatic",
-    "ios": {
-      "icon": "./assets/images/parfum-app-icon.png"
-    },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#ffffff",
-        "foregroundImage": "./assets/images/parfum-adaptive-foreground.png",
-        "monochromeImage": "./assets/images/parfum-adaptive-foreground.png"
-      },
-      "predictiveBackGestureEnabled": false,
-      "package": "com.dendyla.mobile"
-    },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
-    },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#ffffff",
-          "image": "./assets/images/parfum-splash.png",
-          "imageWidth": 180,
-          "android": {
-            "image": "./assets/images/parfum-splash.png",
-            "imageWidth": 180,
-            "backgroundColor": "#ffffff"
-          }
+    "expo": {
+        "name": "mobile",
+        "slug": "mobile",
+        "version": "1.0.0",
+        "orientation": "portrait",
+        "icon": "./assets/images/parfum-app-icon.png",
+        "scheme": "mobile",
+        "userInterfaceStyle": "automatic",
+        "ios": {
+            "icon": "./assets/images/parfum-ios-icon.png"
+        },
+        "android": {
+            "adaptiveIcon": {
+                "backgroundColor": "#ffffff",
+                "foregroundImage": "./assets/images/parfum-android-foreground.png",
+                "monochromeImage": "./assets/images/parfum-android-monochrome.png"
+            },
+            "predictiveBackGestureEnabled": false,
+            "package": "com.dendyla.mobile"
+        },
+        "web": {
+            "output": "static",
+            "favicon": "./assets/images/favicon.png"
+        },
+        "plugins": [
+            "expo-router",
+            [
+                "expo-splash-screen",
+                {
+                    "backgroundColor": "#ffffff",
+                    "image": "./assets/images/parfum-splash.png",
+                    "imageWidth": 180,
+                    "android": {
+                        "image": "./assets/images/parfum-splash.png",
+                        "imageWidth": 180,
+                        "backgroundColor": "#ffffff"
+                    }
+                }
+            ]
+        ],
+        "experiments": {
+            "typedRoutes": true,
+            "reactCompiler": true
+        },
+        "extra": {
+            "router": {},
+            "eas": {
+                "projectId": "6ef1f127-d33d-44df-bce8-3d9e9e7f6313"
+            }
         }
-      ]
-    ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
-    },
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "6ef1f127-d33d-44df-bce8-3d9e9e7f6313"
-      }
     }
-  }
 }

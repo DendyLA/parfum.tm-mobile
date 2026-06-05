@@ -29,21 +29,26 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
             body: JSON.stringify(body),
         });
     } catch {
-        throw new Error("Нет соединения с интернетом. Проверьте сеть и попробуйте снова.");
+        throw new Error(
+            "Нет соединения с интернетом. Проверьте сеть и попробуйте снова."
+        );
     }
 
     if (!response.ok) {
-        let message = "Не удалось отправить данные. Попробуйте ещё раз.";
+        let message =
+            "Не удалось отправить данные. Попробуйте еще раз.";
 
         try {
             const errorBody = await response.json();
-            const detail = errorBody?.detail || errorBody?.message || errorBody?.error;
+            const detail =
+                errorBody?.detail || errorBody?.message || errorBody?.error;
             if (typeof detail === "string") {
                 message = detail;
             }
         } catch {
             if (response.status >= 500) {
-                message = "Сервер временно недоступен. Попробуйте чуть позже.";
+                message =
+                    "Сервер временно недоступен. Попробуйте чуть позже.";
             }
         }
 
