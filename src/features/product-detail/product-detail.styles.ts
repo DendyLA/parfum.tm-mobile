@@ -170,6 +170,15 @@ export const styles = StyleSheet.create({
         lineHeight: 23,
         fontWeight: "400",
     },
+    descriptionCard: {
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: palette.border,
+        paddingHorizontal: 12,
+        paddingTop: 12,
+        paddingBottom: 8,
+        backgroundColor: palette.surface,
+    },
     variationList: {
         flexDirection: "row",
         flexWrap: "wrap",
@@ -307,7 +316,7 @@ export const styles = StyleSheet.create({
 export const descriptionHtmlBaseStyle: MixedStyleDeclaration = {
     color: palette.primary,
     fontSize: 15,
-    lineHeight: 23,
+    lineHeight: 22,
     fontWeight: "400",
 };
 
@@ -316,29 +325,32 @@ export const descriptionHtmlTags: Readonly<
 > = {
     p: {
         marginTop: 0,
-        marginBottom: 10,
+        marginBottom: 8,
     },
     div: {
         marginTop: 0,
-        marginBottom: 10,
+        marginBottom: 8,
     },
     ul: {
-        marginTop: 0,
-        marginBottom: 10,
-        paddingLeft: 18,
+        marginTop: 2,
+        marginBottom: 8,
+        paddingLeft: 14,
     },
     ol: {
-        marginTop: 0,
-        marginBottom: 10,
-        paddingLeft: 18,
+        marginTop: 2,
+        marginBottom: 8,
+        paddingLeft: 16,
     },
     li: {
-        marginBottom: 6,
+        marginBottom: 4,
+        paddingLeft: 2,
     },
     strong: {
-        fontWeight: "700",
+        color: palette.primary,
+        fontWeight: "800",
     },
     b: {
-        fontWeight: "700",
+        color: palette.primary,
+        fontWeight: "800",
     },
 };

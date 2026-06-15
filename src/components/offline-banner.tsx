@@ -1,6 +1,7 @@
 import { StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
+import { useTranslations } from "@/i18n";
 
 function formatUpdatedAt(value?: string | null) {
     if (!value) return null;
@@ -23,6 +24,7 @@ export function OfflineBanner({
     visible: boolean;
     updatedAt?: string | null;
 }) {
+    const t = useTranslations();
     if (!visible) return null;
 
     const formattedDate = formatUpdatedAt(updatedAt);
@@ -30,11 +32,11 @@ export function OfflineBanner({
     return (
         <View style={styles.banner}>
             <ThemedText style={styles.text}>
-                Оффлайн: показываем сохраненные товары
+                {t("offlinePrefix")}
             </ThemedText>
             {formattedDate ? (
                 <ThemedText style={styles.meta}>
-                    Обновлено: {formattedDate}
+                    {t("updated")}: {formattedDate}
                 </ThemedText>
             ) : null}
         </View>

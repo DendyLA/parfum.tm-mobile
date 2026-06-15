@@ -1,11 +1,12 @@
-import { Href, useRouter } from "expo-router";
+﻿import { Href, useRouter } from "expo-router";
 import { Image } from "expo-image";
-import { ArrowLeft, Heart, ShoppingBag, Trash2 } from "lucide-react-native";
+import { ArrowLeft, Heart, ShoppingCart, Trash2 } from "lucide-react-native";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
 import { palette, styles } from "@/features/favorites/favorites.styles";
+import { useTranslations } from "@/i18n";
 import { ProductItem } from "@/services/catalog";
 import { useCartStore } from "@/store/cart";
 import { useFavoriteStore } from "@/store/favorites";
@@ -18,6 +19,7 @@ function formatPrice(value: number) {
 
 function FavoriteItem({ product }: { product: ProductItem }) {
     const router = useRouter();
+    const t = useTranslations();
     const addItem = useCartStore((state) => state.addItem);
     const removeFavorite = useFavoriteStore((state) => state.removeFavorite);
 
@@ -40,6 +42,8 @@ function FavoriteItem({ product }: { product: ProductItem }) {
                 {product.image ? (
                     <Image
                         source={{ uri: product.image }}
+                        cachePolicy="memory-disk"
+                        recyclingKey={`favorite-${product.id}`}
                         contentFit="contain"
                         style={styles.image}
                     />
@@ -84,7 +88,7 @@ function FavoriteItem({ product }: { product: ProductItem }) {
                         onPress={() => addItem(product)}
                     >
                         <ThemedText style={styles.addButtonText}>
-                            В корзину
+                            {t("addToCart")}
                         </ThemedText>
                     </TouchableOpacity>
                 </View>
@@ -95,6 +99,7 @@ function FavoriteItem({ product }: { product: ProductItem }) {
 
 export default function FavoritesScreen() {
     const router = useRouter();
+    const t = useTranslations();
     const items = useFavoriteStore((state) => state.items);
 
     if (!items.length) {
@@ -109,10 +114,10 @@ export default function FavoritesScreen() {
                         />
                     </View>
                     <ThemedText style={styles.emptyTitle}>
-                        Избранное пустое
+                        {t("emptyFavorites")}
                     </ThemedText>
                     <ThemedText style={styles.emptyText}>
-                        Нажимайте сердечко на товарах, чтобы сохранить их здесь.
+                        {t("emptyFavoritesText")}
                     </ThemedText>
                     <TouchableOpacity
                         activeOpacity={0.86}
@@ -120,7 +125,7 @@ export default function FavoritesScreen() {
                         onPress={() => router.replace(catalogHref)}
                     >
                         <ThemedText style={styles.continueButtonText}>
-                            Перейти в каталог
+                            {t("goToCatalog")}
                         </ThemedText>
                     </TouchableOpacity>
                 </View>
@@ -146,13 +151,13 @@ export default function FavoritesScreen() {
                         />
                     </TouchableOpacity>
                     <ThemedText style={styles.headerTitle}>
-                        Избранное
+                        {t("favorites")}
                     </ThemedText>
                     <TouchableOpacity
                         style={styles.iconButton}
                         onPress={() => router.push("/cart")}
                     >
-                        <ShoppingBag
+                        <ShoppingCart
                             color={palette.primary}
                             size={21}
                             strokeWidth={2.1}

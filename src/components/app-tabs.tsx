@@ -1,9 +1,10 @@
 ﻿import { Tabs } from "expo-router";
-import { Grid3X3, Heart, Home, ShoppingBag } from "lucide-react-native";
-import { ColorValue } from "react-native";
+import { Grid3X3, Heart, Home, ShoppingCart } from "lucide-react-native";
+import { ColorValue, DeviceEventEmitter } from "react-native";
 
 import { useCartStore } from "@/store/cart";
 import { useFavoriteStore } from "@/store/favorites";
+import { useTranslations } from "@/i18n";
 
 const palette = {
     primary: "#212121",
@@ -23,6 +24,7 @@ function iconColor(color: ColorValue) {
 }
 
 export default function AppTabs() {
+    const t = useTranslations();
     const cartItems = useCartStore((state) => state.items);
     const favoriteItems = useFavoriteStore((state) => state.items);
     const totalQuantity = cartItems.reduce(
@@ -68,7 +70,7 @@ export default function AppTabs() {
             <Tabs.Screen
                 name="index"
                 options={{
-                    title: "Главная",
+                    title: t("home"),
                     tabBarIcon: ({ color, size }: TabIconProps) => (
                         <Home
                             color={iconColor(color)}
@@ -77,11 +79,16 @@ export default function AppTabs() {
                         />
                     ),
                 }}
+                listeners={{
+                    tabPress: () => {
+                        DeviceEventEmitter.emit("homeTabPressed");
+                    },
+                }}
             />
             <Tabs.Screen
                 name="categories"
                 options={{
-                    title: "Категории",
+                    title: t("categories"),
                     tabBarIcon: ({ color, size }: TabIconProps) => (
                         <Grid3X3
                             color={iconColor(color)}
@@ -90,12 +97,17 @@ export default function AppTabs() {
                         />
                     ),
                 }}
+                listeners={{
+                    tabPress: () => {
+                        DeviceEventEmitter.emit("categoriesTabPressed");
+                    },
+                }}
             />
             <Tabs.Screen
                 name="favorites"
                 options={{
                     tabBarBadge: totalFavorites > 0 ? String(totalFavorites) : undefined,
-                    title: "Избранное",
+                    title: t("favorites"),
                     tabBarIcon: ({ color, size }: TabIconProps) => (
                         <Heart
                             color={iconColor(color)}
@@ -109,9 +121,9 @@ export default function AppTabs() {
                 name="cart"
                 options={{
                     tabBarBadge: totalQuantity > 0 ? String(totalQuantity) : undefined,
-                    title: "Корзина",
+                    title: t("cart"),
                     tabBarIcon: ({ color, size }: TabIconProps) => (
-                        <ShoppingBag
+                        <ShoppingCart
                             color={iconColor(color)}
                             size={Math.min(size, 22)}
                             strokeWidth={2}
@@ -122,3 +134,4 @@ export default function AppTabs() {
         </Tabs>
     );
 }
+

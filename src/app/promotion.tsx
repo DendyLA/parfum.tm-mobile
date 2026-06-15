@@ -4,9 +4,8 @@ import { Href, useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft, Share2 } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    ScrollView,
+    FlatList,
+    ListRenderItemInfo,
     Share,
     TouchableOpacity,
     useWindowDimensions,
@@ -18,13 +17,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { OfflineBanner } from "@/components/offline-banner";
 import { ProductGridSkeleton, PromotionSkeleton } from "@/components/skeleton";
 import { ThemedText } from "@/components/themed-text";
-import { FeedStatus, ProductGrid } from "@/features/home/components";
+import { FeedStatus, ProductCard } from "@/features/home/components";
 import {
     htmlBaseStyle,
     htmlTags,
     palette,
     styles,
 } from "@/features/promotion-detail/promotion-detail.styles";
+import { useTranslations } from "@/i18n";
+import { getCacheMeta } from "@/services/cache";
 import {
     getPagedProducts,
     getPromotionById,
@@ -32,10 +33,8 @@ import {
     ProductItem,
     PromotionDetail,
 } from "@/services/catalog";
-import { getCacheMeta } from "@/services/cache";
 
 const PAGE_SIZE = 10;
-const LOAD_MORE_THRESHOLD = 900;
 
 function normalizeHtml(value: string) {
     return value.replace(/&nbsp;|&#160;|&#xA0;/gi, " ").replace(/\u00a0/g, " ");
@@ -68,12 +67,12 @@ function getPromotionProductsCacheKey({
 
 export default function PromotionDetailScreen() {
     const router = useRouter();
+    const t = useTranslations();
     const netInfo = useNetInfo();
     const { width } = useWindowDimensions();
     const { id } = useLocalSearchParams<{ id?: string }>();
     const [promotion, setPromotion] = useState<PromotionDetail | null>(null);
     const [products, setProducts] = useState<ProductItem[]>([]);
-    const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [promotionLoading, setPromotionLoading] = useState(true);
     const [productsLoading, setProductsLoading] = useState(false);
@@ -102,13 +101,38 @@ export default function PromotionDetailScreen() {
             }
 
             const params = getPromotionCatalogParams(promotionData.link);
-            if (!params) return;
+            const selectedProducts = promotionData.products || [];
+
+            if (selectedProducts.length) {
+                setProducts(selectedProducts);
+                pageRef.current = 1;
+                hasMoreRef.current = false;
+                setHasMore(false);
+                setProductsLoading(false);
+                const meta = await getCacheMeta(`promotion:${promotionData.id}`);
+                setCacheUpdatedAt(meta?.savedAt || null);
+                return;
+            }
+
+            if (!params) {
+                if (reset) {
+                    setProducts([]);
+                    pageRef.current = 1;
+                }
+                hasMoreRef.current = false;
+                setHasMore(false);
+                setProductsLoading(false);
+                const meta = await getCacheMeta(`promotion:${promotionData.id}`);
+                setCacheUpdatedAt(meta?.savedAt || null);
+                return;
+            }
 
             const nextPage = reset ? 1 : pageRef.current;
 
             try {
                 productsLoadingRef.current = true;
                 setProductsLoading(true);
+
                 const data = await getPagedProducts({
                     page: nextPage,
                     pageSize: PAGE_SIZE,
@@ -131,8 +155,8 @@ export default function PromotionDetailScreen() {
 
                 pageRef.current = nextPage + 1;
                 hasMoreRef.current = data.length >= PAGE_SIZE;
-                setPage(pageRef.current);
                 setHasMore(hasMoreRef.current);
+
                 const metas = await Promise.all([
                     getCacheMeta(`promotion:${promotionData.id}`),
                     getCacheMeta(
@@ -163,7 +187,7 @@ export default function PromotionDetailScreen() {
 
         async function loadPromotion() {
             if (!id) {
-                setError("Акция не найдена");
+                setError(t("promotionNotFound"));
                 setPromotionLoading(false);
                 return;
             }
@@ -174,18 +198,12 @@ export default function PromotionDetailScreen() {
 
                 const data = await getPromotionById(id);
                 const meta = await getCacheMeta(`promotion:${id}`);
-                const params = getPromotionCatalogParams(data.link);
-
-                if (!params) {
-                    throw new Error("У этой акции не выбрана категория.");
-                }
 
                 if (alive) {
                     setPromotion(data);
                     setProducts([]);
                     pageRef.current = 1;
                     hasMoreRef.current = true;
-                    setPage(1);
                     setHasMore(true);
                     setCacheUpdatedAt(meta?.savedAt || null);
                     loadProducts({ promotionData: data, reset: true });
@@ -195,7 +213,7 @@ export default function PromotionDetailScreen() {
                     setError(
                         requestError instanceof Error
                             ? requestError.message
-                            : "Не удалось загрузить акцию"
+                            : t("promotionLoadError")
                     );
                 }
             } finally {
@@ -209,24 +227,6 @@ export default function PromotionDetailScreen() {
         };
     }, [id]);
 
-    function maybeLoadMore(
-        event?: NativeSyntheticEvent<NativeScrollEvent>
-    ) {
-        if (!event) {
-            loadProducts();
-            return;
-        }
-
-        const { layoutMeasurement, contentOffset, contentSize } =
-            event.nativeEvent;
-        const distanceFromBottom =
-            contentSize.height - (layoutMeasurement.height + contentOffset.y);
-
-        if (distanceFromBottom < LOAD_MORE_THRESHOLD) {
-            loadProducts();
-        }
-    }
-
     function handleShare() {
         if (!promotion) return;
 
@@ -238,46 +238,21 @@ export default function PromotionDetailScreen() {
         });
     }
 
-    if (promotionLoading) {
-        return (
-            <SafeAreaView style={styles.root}>
-                <PromotionSkeleton />
-            </SafeAreaView>
-        );
+    function handleEndReached() {
+        if (products.length && hasMoreRef.current) {
+            loadProducts();
+        }
     }
 
-    if (error || !promotion) {
-        return (
-            <SafeAreaView style={styles.root}>
-                <View style={styles.loadingWrap}>
-                    <ThemedText style={styles.errorText}>
-                        {error || "Акция не найдена"}
-                    </ThemedText>
-                    <TouchableOpacity
-                        activeOpacity={0.86}
-                        style={styles.catalogButton}
-                        onPress={() => router.replace("/" as Href)}
-                    >
-                        <ThemedText style={styles.catalogButtonText}>
-                            В каталог
-                        </ThemedText>
-                    </TouchableOpacity>
-                </View>
-            </SafeAreaView>
-        );
+    function renderProduct({ item }: ListRenderItemInfo<ProductItem>) {
+        return <ProductCard product={item} />;
     }
 
-    return (
-        <SafeAreaView edges={["top"]} style={styles.root}>
-            <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.content}
-                onContentSizeChange={() => maybeLoadMore()}
-                onMomentumScrollEnd={maybeLoadMore}
-                onScroll={maybeLoadMore}
-                onScrollEndDrag={maybeLoadMore}
-                scrollEventThrottle={80}
-            >
+    function renderHeader() {
+        if (!promotion) return null;
+
+        return (
+            <>
                 <View style={styles.header}>
                     <TouchableOpacity
                         activeOpacity={0.86}
@@ -290,7 +265,7 @@ export default function PromotionDetailScreen() {
                             strokeWidth={2.2}
                         />
                     </TouchableOpacity>
-                    <ThemedText style={styles.headerTitle}>Акция</ThemedText>
+                    <ThemedText style={styles.headerTitle}>{t("promotion")}</ThemedText>
                     <TouchableOpacity
                         activeOpacity={0.86}
                         style={styles.iconButton}
@@ -313,6 +288,8 @@ export default function PromotionDetailScreen() {
                     <View style={styles.hero}>
                         <Image
                             source={{ uri: promotion.image }}
+                            cachePolicy="memory-disk"
+                            recyclingKey={`promotion-${promotion.id}`}
                             contentFit="contain"
                             style={styles.heroImage}
                         />
@@ -335,45 +312,103 @@ export default function PromotionDetailScreen() {
                 ) : null}
 
                 <ThemedText style={styles.sectionTitle}>
-                    Товары акции
+                    {t("promotionProducts")}
                 </ThemedText>
+            </>
+        );
+    }
 
-                {products.length ? (
-                    <>
-                        <ProductGrid items={products} />
-                        <FeedStatus
-                            loading={productsLoading}
-                            hasMore={hasMore}
-                        />
-                        <TouchableOpacity
-                            activeOpacity={0.86}
-                            style={styles.catalogButton}
-                            onPress={() => router.replace("/" as Href)}
-                        >
-                            <ThemedText style={styles.catalogButtonText}>
-                                В каталог
-                            </ThemedText>
-                        </TouchableOpacity>
-                    </>
-                ) : productsLoading ? (
-                    <ProductGridSkeleton count={4} />
-                ) : (
-                    <View style={styles.emptyBlock}>
-                        <ThemedText style={styles.emptyTitle}>
-                            В этой акции пока нет товаров
+    function renderFooter() {
+        if (!products.length) return null;
+
+        return (
+            <View style={styles.footer}>
+                <FeedStatus loading={productsLoading} hasMore={hasMore} />
+                <TouchableOpacity
+                    activeOpacity={0.86}
+                    style={styles.catalogButton}
+                    onPress={() => router.replace("/" as Href)}
+                >
+                    <ThemedText style={styles.catalogButtonText}>
+                        {t("goCatalog")}
+                    </ThemedText>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    function renderEmpty() {
+        if (productsLoading) {
+            return <ProductGridSkeleton count={4} />;
+        }
+
+        return (
+            <View style={styles.emptyBlock}>
+                <ThemedText style={styles.emptyTitle}>
+                    {t("promotionEmpty")}
+                </ThemedText>
+                <TouchableOpacity
+                    activeOpacity={0.86}
+                    style={styles.catalogButton}
+                    onPress={() => router.replace("/" as Href)}
+                >
+                    <ThemedText style={styles.catalogButtonText}>
+                        {t("goCatalog")}
+                    </ThemedText>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    if (promotionLoading) {
+        return (
+            <SafeAreaView style={styles.root}>
+                <PromotionSkeleton />
+            </SafeAreaView>
+        );
+    }
+
+    if (error || !promotion) {
+        return (
+            <SafeAreaView style={styles.root}>
+                <View style={styles.loadingWrap}>
+                    <ThemedText style={styles.errorText}>
+                        {error || t("promotionNotFound")}
+                    </ThemedText>
+                    <TouchableOpacity
+                        activeOpacity={0.86}
+                        style={styles.catalogButton}
+                        onPress={() => router.replace("/" as Href)}
+                    >
+                        <ThemedText style={styles.catalogButtonText}>
+                            {t("goCatalog")}
                         </ThemedText>
-                        <TouchableOpacity
-                            activeOpacity={0.86}
-                            style={styles.catalogButton}
-                            onPress={() => router.replace("/" as Href)}
-                        >
-                            <ThemedText style={styles.catalogButtonText}>
-                                В каталог
-                            </ThemedText>
-                        </TouchableOpacity>
-                    </View>
-                )}
-            </ScrollView>
+                    </TouchableOpacity>
+                </View>
+            </SafeAreaView>
+        );
+    }
+
+    return (
+        <SafeAreaView edges={["top"]} style={styles.root}>
+            <FlatList
+                data={products}
+                keyExtractor={(item) => String(item.id)}
+                renderItem={renderProduct}
+                numColumns={2}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.content}
+                columnWrapperStyle={styles.productColumn}
+                initialNumToRender={6}
+                maxToRenderPerBatch={6}
+                windowSize={7}
+                removeClippedSubviews
+                onEndReached={handleEndReached}
+                onEndReachedThreshold={0.45}
+                ListHeaderComponent={renderHeader}
+                ListFooterComponent={renderFooter}
+                ListEmptyComponent={renderEmpty}
+            />
         </SafeAreaView>
     );
 }

@@ -1,8 +1,12 @@
 import { useNetInfo } from "@react-native-community/netinfo";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { ArrowLeft, ChevronRight } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
+    DeviceEventEmitter,
+    FlatList,
+    ListRenderItemInfo,
     ScrollView,
     TextInput,
     TouchableOpacity,
@@ -14,7 +18,8 @@ import { OfflineBanner } from "@/components/offline-banner";
 import { ProductGridSkeleton } from "@/components/skeleton";
 import { ThemedText } from "@/components/themed-text";
 import { palette, styles } from "@/features/categories/categories.styles";
-import { ProductGrid } from "@/features/home/components";
+import { FeedStatus, ProductCard } from "@/features/home/components";
+import { useTranslations } from "@/i18n";
 import {
     CategoryItem,
     getCategories,
@@ -22,12 +27,9 @@ import {
     ProductItem,
 } from "@/services/catalog";
 import { getCacheMeta } from "@/services/cache";
+import { useLanguageStore } from "@/store/language";
 
-const SORT_OPTIONS = [
-    { label: "Сначала новые", value: "-created_at" },
-    { label: "Дешевле", value: "real_price" },
-    { label: "Дороже", value: "-real_price" },
-];
+const PAGE_SIZE = 10;
 
 function getProductsCacheKey({
     categoryId,
@@ -35,16 +37,18 @@ function getProductsCacheKey({
     minPrice,
     maxPrice,
     hasDiscount,
+    page,
 }: {
     categoryId: number;
     ordering: string;
     minPrice: string;
     maxPrice: string;
     hasDiscount: boolean;
+    page: number;
 }) {
     const params = new URLSearchParams();
-    params.append("page", "1");
-    params.append("page_size", "20");
+    params.append("page", String(page));
+    params.append("page_size", String(PAGE_SIZE));
     params.append("in_stock", "true");
     params.append("category", String(categoryId));
     params.append("ordering", ordering);
@@ -54,9 +58,28 @@ function getProductsCacheKey({
     return `products:/products/?${params.toString()}`;
 }
 
+function getCategoryPath(category: CategoryItem, categories: CategoryItem[]) {
+    const path: CategoryItem[] = [];
+    let current: CategoryItem | undefined = category;
+
+    while (current) {
+        path.unshift(current);
+        current = current.parent
+            ? categories.find((item) => item.id === current?.parent)
+            : undefined;
+    }
+
+    return path;
+}
+
 export default function CategoriesScreen() {
     const netInfo = useNetInfo();
-    const scrollRef = useRef<ScrollView>(null);
+    const t = useTranslations();
+    const language = useLanguageStore((state) => state.language);
+    const listRef = useRef<FlatList<ProductItem>>(null);
+    const productsLoadingRef = useRef(false);
+    const pageRef = useRef(1);
+    const hasMoreRef = useRef(true);
     const routeParams = useLocalSearchParams<{
         categoryId?: string;
         discountOnly?: string;
@@ -67,6 +90,7 @@ export default function CategoriesScreen() {
     const [products, setProducts] = useState<ProductItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [productsLoading, setProductsLoading] = useState(false);
+    const [productsHasMore, setProductsHasMore] = useState(true);
     const [ordering, setOrdering] = useState("-created_at");
     const [minPrice, setMinPrice] = useState("");
     const [maxPrice, setMaxPrice] = useState("");
@@ -74,19 +98,24 @@ export default function CategoriesScreen() {
     const [cacheUpdatedAt, setCacheUpdatedAt] = useState<string | null>(null);
     const isOffline =
         netInfo.isConnected === false || netInfo.isInternetReachable === false;
+    const sortOptions = [
+        { label: t("sortNewest"), value: "-created_at" },
+        { label: t("sortCheap"), value: "real_price" },
+        { label: t("sortExpensive"), value: "-real_price" },
+    ];
 
     const scrollToTop = useCallback((animated = true) => {
-        scrollRef.current?.scrollTo({ y: 0, animated: false });
+        listRef.current?.scrollToOffset({ offset: 0, animated: false });
         requestAnimationFrame(() => {
-            scrollRef.current?.scrollTo({ y: 0, animated });
+            listRef.current?.scrollToOffset({ offset: 0, animated });
         });
         setTimeout(() => {
-            scrollRef.current?.scrollTo({ y: 0, animated });
+            listRef.current?.scrollToOffset({ offset: 0, animated });
         }, 120);
         setTimeout(() => {
-            scrollRef.current?.scrollTo({ y: 0, animated });
+            listRef.current?.scrollToOffset({ offset: 0, animated });
         }, 320);
-    }, []);
+    }, [language]);
 
     useFocusEffect(
         useCallback(() => {
@@ -106,9 +135,6 @@ export default function CategoriesScreen() {
                 if (!alive) return;
 
                 setCategories(data);
-                const firstParent =
-                    data.find((category) => !category.parent) || null;
-                setSelectedCategory(firstParent);
                 const meta = await getCacheMeta("categories");
                 if (alive) setCacheUpdatedAt(meta?.savedAt || null);
             } finally {
@@ -154,24 +180,54 @@ export default function CategoriesScreen() {
         scrollToTop,
     ]);
 
-    useEffect(() => {
-        let alive = true;
+    const loadProductsPage = useCallback(
+        async ({ reset = false }: { reset?: boolean } = {}) => {
+            if (!selectedCategory) {
+                setProducts([]);
+                setProductsLoading(false);
+                setProductsHasMore(false);
+                return;
+            }
 
-        async function loadProducts() {
-            if (!selectedCategory) return;
+            if (
+                productsLoadingRef.current ||
+                (!hasMoreRef.current && !reset)
+            ) {
+                return;
+            }
+
+            const nextPage = reset ? 1 : pageRef.current;
 
             try {
+                productsLoadingRef.current = true;
                 setProductsLoading(true);
                 const data = await getPagedProducts({
-                    page: 1,
-                    pageSize: 20,
+                    page: nextPage,
+                    pageSize: PAGE_SIZE,
                     categoryId: selectedCategory.id,
                     ordering,
                     minPrice,
                     maxPrice,
                     hasDiscount: discountOnly,
                 });
-                if (alive) setProducts(data);
+
+                setProducts((previous) => {
+                    const base = reset ? [] : previous;
+                    const existingIds = new Set(
+                        base.map((product) => product.id)
+                    );
+                    return [
+                        ...base,
+                        ...data.filter(
+                            (product) => !existingIds.has(product.id)
+                        ),
+                    ];
+                });
+
+                pageRef.current = nextPage + 1;
+                hasMoreRef.current = data.length >= PAGE_SIZE;
+                setProductsHasMore(hasMoreRef.current);
+
                 const metas = await Promise.all([
                     getCacheMeta("categories"),
                     getCacheMeta(
@@ -181,6 +237,7 @@ export default function CategoriesScreen() {
                             minPrice,
                             maxPrice,
                             hasDiscount: discountOnly,
+                            page: nextPage,
                         })
                     ),
                 ]);
@@ -188,25 +245,34 @@ export default function CategoriesScreen() {
                     .map((meta) => meta?.savedAt)
                     .filter((date): date is string => Boolean(date))
                     .sort();
-                if (alive && dates.length) {
+                if (dates.length) {
                     setCacheUpdatedAt(dates[dates.length - 1]);
                 }
             } finally {
-                if (alive) setProductsLoading(false);
+                productsLoadingRef.current = false;
+                setProductsLoading(false);
             }
-        }
+        },
+        [selectedCategory, ordering, minPrice, maxPrice, discountOnly]
+    );
 
-        loadProducts();
-        return () => {
-            alive = false;
-        };
-    }, [selectedCategory, ordering, minPrice, maxPrice, discountOnly]);
+    useEffect(() => {
+        pageRef.current = 1;
+        hasMoreRef.current = true;
+        setProductsHasMore(true);
+        setProducts([]);
+        loadProductsPage({ reset: true });
+    }, [loadProductsPage]);
 
-    const parentCategories = categories.filter((category) => !category.parent);
-    const selectedParentId =
-        selectedCategory?.parent || selectedCategory?.id || null;
-    const childCategories = selectedParentId
-        ? categories.filter((category) => category.parent === selectedParentId)
+    const currentLevelCategories = selectedCategory
+        ? categories.filter((category) => category.parent === selectedCategory.id)
+        : categories.filter((category) => !category.parent);
+    const parentCategory = selectedCategory?.parent
+        ? categories.find((category) => category.id === selectedCategory.parent) ||
+          null
+        : null;
+    const categoryPath = selectedCategory
+        ? getCategoryPath(selectedCategory, categories)
         : [];
 
     function selectCategory(category: CategoryItem) {
@@ -217,6 +283,31 @@ export default function CategoriesScreen() {
         scrollToTop(true);
     }
 
+    function goBackLevel() {
+        setSelectedCategory(parentCategory);
+        setProducts([]);
+        scrollToTop(true);
+    }
+
+    function resetToRoot() {
+        setSelectedCategory(null);
+        setProducts([]);
+        setOrdering("-created_at");
+        setMinPrice("");
+        setMaxPrice("");
+        setDiscountOnly(false);
+        scrollToTop(true);
+    }
+
+    useEffect(() => {
+        const subscription = DeviceEventEmitter.addListener(
+            "categoriesTabPressed",
+            resetToRoot
+        );
+
+        return () => subscription.remove();
+    }, [scrollToTop]);
+
     function resetFilters() {
         setOrdering("-created_at");
         setMinPrice("");
@@ -224,19 +315,59 @@ export default function CategoriesScreen() {
         setDiscountOnly(false);
     }
 
+    function renderProduct({ item }: ListRenderItemInfo<ProductItem>) {
+        return <ProductCard product={item} />;
+    }
+
+    function renderFooter() {
+        if (!selectedCategory) return null;
+
+        return (
+            <View style={styles.productsFooter}>
+                <FeedStatus
+                    loading={productsLoading}
+                    hasMore={productsHasMore}
+                />
+            </View>
+        );
+    }
+
+    function renderEmptyProducts() {
+        if (!selectedCategory || productsLoading) return null;
+
+        return (
+            <ThemedText style={styles.emptyText}>
+                {t("emptyCategory")}
+            </ThemedText>
+        );
+    }
+
     return (
         <SafeAreaView edges={["top"]} style={styles.root}>
-            <ScrollView
-                ref={scrollRef}
-                nestedScrollEnabled
+            <FlatList
+                ref={listRef}
+                data={selectedCategory ? products : []}
+                keyExtractor={(item) => String(item.id)}
+                renderItem={renderProduct}
+                numColumns={2}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.content}
-            >
+                columnWrapperStyle={styles.productColumn}
+                initialNumToRender={6}
+                maxToRenderPerBatch={8}
+                windowSize={7}
+                removeClippedSubviews
+                onEndReached={() => loadProductsPage()}
+                onEndReachedThreshold={0.55}
+                ListFooterComponent={renderFooter}
+                ListEmptyComponent={renderEmptyProducts}
+                ListHeaderComponent={
+                    <>
                 <View style={styles.header}>
-                    <ThemedText style={styles.title}>Категории</ThemedText>
+                    <ThemedText style={styles.title}>{t("categories")}</ThemedText>
                     <ThemedText style={styles.subtitle}>
-                        Выбирайте раздел и сразу смотрите товары
+                        {t("chooseCategory")}
                     </ThemedText>
                 </View>
 
@@ -251,96 +382,102 @@ export default function CategoriesScreen() {
                     </View>
                 ) : (
                     <>
-                        <ScrollView
-                            horizontal
-                            nestedScrollEnabled
-                            keyboardShouldPersistTaps="handled"
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.parentList}
-                        >
-                            {parentCategories.map((category) => {
-                                const isActive =
-                                    selectedParentId === category.id;
-                                return (
-                                    <TouchableOpacity
-                                        activeOpacity={0.82}
-                                        key={category.id}
-                                        style={[
-                                            styles.parentChip,
-                                            isActive && styles.parentChipActive,
-                                        ]}
-                                        onPress={() => selectCategory(category)}
-                                    >
-                                        <ThemedText
-                                            style={[
-                                                styles.parentText,
-                                                isActive &&
-                                                    styles.parentTextActive,
-                                            ]}
-                                        >
-                                            {category.title}
-                                        </ThemedText>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </ScrollView>
-
-                        {childCategories.length ? (
-                            <View style={styles.subcategoryPanel}>
-                                <ThemedText style={styles.subcategoryTitle}>
-                                    Подкатегории
-                                </ThemedText>
-                                <ScrollView
-                                    horizontal
-                                    nestedScrollEnabled
-                                    keyboardShouldPersistTaps="handled"
-                                    showsHorizontalScrollIndicator={false}
-                                    contentContainerStyle={
-                                        styles.subcategoryList
-                                    }
+                        <View style={styles.categoryPanel}>
+                            <View style={styles.categoryLevelCard}>
+                                <ThemedText
+                                    numberOfLines={1}
+                                    style={styles.categoryTrail}
                                 >
-                                    {childCategories.map((category) => {
-                                        const isActive =
-                                            selectedCategory?.id ===
-                                            category.id;
-                                        return (
-                                            <TouchableOpacity
-                                                activeOpacity={0.82}
-                                                key={category.id}
-                                                style={[
-                                                    styles.subcategoryChip,
-                                                    isActive &&
-                                                        styles.subcategoryChipActive,
-                                                ]}
-                                                onPress={() =>
-                                                    selectCategory(category)
-                                                }
-                                            >
+                                    {categoryPath.length
+                                        ? [t("categories"), ...categoryPath.map(
+                                              (item) => item.title
+                                          )].join(" / ")
+                                        : t("categories")}
+                                </ThemedText>
+                                <View style={styles.categoryLevelHeader}>
+                                    <View style={styles.categoryLevelText}>
+                                        <ThemedText
+                                            style={styles.categoryLevelTitle}
+                                        >
+                                            {selectedCategory
+                                                ? selectedCategory.title
+                                                : t("mainCategories")}
+                                        </ThemedText>
+                                        <ThemedText
+                                            style={styles.categoryLevelMeta}
+                                        >
+                                            {currentLevelCategories.length
+                                                ? selectedCategory
+                                                    ? t("selectSubcategory")
+                                                    : t("selectSection")
+                                                : t("inCategoryProducts")}
+                                        </ThemedText>
+                                    </View>
+                                    
+                                </View>
+                            </View>
+
+                            {currentLevelCategories.length ? (
+                                <View style={styles.categoryList}>
+                                    {currentLevelCategories.map((category) => (
+                                        <TouchableOpacity
+                                            activeOpacity={0.84}
+                                            key={category.id}
+                                            style={styles.categoryRow}
+                                            onPress={() =>
+                                                selectCategory(category)
+                                            }
+                                        >
+                                            <View style={styles.categoryRowCopy}>
                                                 <ThemedText
                                                     style={
-                                                        styles.subcategoryText
+                                                        styles.categoryRowText
                                                     }
                                                 >
                                                     {category.title}
                                                 </ThemedText>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </ScrollView>
-                            </View>
-                        ) : null}
+                                                <ThemedText
+                                                    style={
+                                                        styles.categoryRowMeta
+                                                    }
+                                                >
+                                                    {t("openCategory")}
+                                                </ThemedText>
+                                            </View>
+                                            <View style={styles.categoryArrow}>
+                                                <ChevronRight
+                                                    color={palette.primary}
+                                                    size={18}
+                                                    strokeWidth={2.3}
+                                                />
+                                            </View>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            ) : (
+                                <View style={styles.noSubcategories}>
+                                    <ThemedText
+                                        style={styles.noSubcategoriesText}
+                                    >
+                                        {t("noMoreSubcategories")}
+                                    </ThemedText>
+                                </View>
+                            )}
+                        </View>
 
-                        <View style={styles.filtersPanel}>
+                        {selectedCategory ? (
+                            <>
+                                <View style={styles.filtersPanel}>
                             <View style={styles.filtersHeader}>
                                 <ThemedText style={styles.filtersTitle}>
-                                    Фильтры
+                                    {t("filters")}
                                 </ThemedText>
                                 <TouchableOpacity
                                     hitSlop={8}
                                     onPress={resetFilters}
                                 >
                                     <ThemedText style={styles.resetText}>
-                                        Сбросить
+                                        {t("reset")}
                                     </ThemedText>
                                 </TouchableOpacity>
                             </View>
@@ -352,7 +489,7 @@ export default function CategoriesScreen() {
                                 showsHorizontalScrollIndicator={false}
                                 contentContainerStyle={styles.sortList}
                             >
-                                {SORT_OPTIONS.map((option) => {
+                                {sortOptions.map((option) => {
                                     const isActive = ordering === option.value;
                                     return (
                                         <TouchableOpacity
@@ -386,7 +523,7 @@ export default function CategoriesScreen() {
                                     value={minPrice}
                                     onChangeText={setMinPrice}
                                     keyboardType="numeric"
-                                    placeholder="Цена от"
+                                    placeholder={t("priceFrom")}
                                     placeholderTextColor={palette.secondary}
                                     style={styles.priceInput}
                                 />
@@ -394,7 +531,7 @@ export default function CategoriesScreen() {
                                     value={maxPrice}
                                     onChangeText={setMaxPrice}
                                     keyboardType="numeric"
-                                    placeholder="Цена до"
+                                    placeholder={t("priceTo")}
                                     placeholderTextColor={palette.secondary}
                                     style={styles.priceInput}
                                 />
@@ -416,27 +553,41 @@ export default function CategoriesScreen() {
                                                 styles.discountTextActive,
                                         ]}
                                     >
-                                        Скидки
+                                        {t("discount")}
                                     </ThemedText>
                                 </TouchableOpacity>
                             </View>
-                        </View>
+                                </View>
 
-                        <ThemedText style={styles.sectionTitle}>
-                            {selectedCategory?.title || "Товары"}
-                        </ThemedText>
-                        {productsLoading ? (
-                            <ProductGridSkeleton count={6} />
-                        ) : products.length ? (
-                            <ProductGrid items={products} />
-                        ) : (
-                            <ThemedText style={styles.emptyText}>
-                                В этой категории пока нет товаров
-                            </ThemedText>
-                        )}
+                                <ThemedText style={styles.sectionTitle}>
+                                    {selectedCategory.title}
+                                </ThemedText>
+                                {productsLoading && !products.length ? (
+                                    <ProductGridSkeleton count={6} />
+                                ) : null}
+                            </>
+                        ) : null}
                     </>
                 )}
-            </ScrollView>
+                    </>
+                }
+            />
+            <View pointerEvents="box-none" style={styles.fixedBackBar}>
+                <TouchableOpacity
+                    activeOpacity={0.84}
+                    style={styles.backButton}
+                    onPress={selectedCategory ? goBackLevel : resetToRoot}
+                >
+                    <ArrowLeft
+                        color={palette.primary}
+                        size={19}
+                        strokeWidth={2.2}
+                    />
+                    <ThemedText style={styles.backButtonText}>
+                        {selectedCategory ? t("back") : t("mainCategories")}
+                    </ThemedText>
+                </TouchableOpacity>
+            </View>
         </SafeAreaView>
     );
 }

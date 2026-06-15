@@ -1,10 +1,10 @@
-import { Image } from "expo-image";
+﻿import { Image } from "expo-image";
 import { Href, useRouter } from "expo-router";
 import {
     ArrowLeft,
     Minus,
     Plus,
-    ShoppingBag,
+    ShoppingCart,
     Trash2,
 } from "lucide-react-native";
 import { ScrollView, TouchableOpacity, View } from "react-native";
@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
 import { palette, styles } from "@/features/cart/cart.styles";
+import { useTranslations } from "@/i18n";
 import { CartItem, useCartStore } from "@/store/cart";
 
 function formatPrice(value: number) {
@@ -45,6 +46,8 @@ function CartProduct({ item }: { item: CartItem }) {
                 {item.image ? (
                     <Image
                         source={{ uri: item.image }}
+                        cachePolicy="memory-disk"
+                        recyclingKey={`cart-${item.key}`}
                         contentFit="contain"
                         style={styles.itemImage}
                     />
@@ -133,6 +136,7 @@ function CartProduct({ item }: { item: CartItem }) {
 
 export default function CartScreen() {
     const router = useRouter();
+    const t = useTranslations();
     const items = useCartStore((state) => state.items);
     const clear = useCartStore((state) => state.clear);
     const totalPrice = useCartStore((state) => state.totalPrice());
@@ -152,23 +156,23 @@ export default function CartScreen() {
                             strokeWidth={2.2}
                         />
                     </TouchableOpacity>
-                    <ThemedText style={styles.headerTitle}>Корзина</ThemedText>
+                    <ThemedText style={styles.headerTitle}>{t("cart")}</ThemedText>
                     <View style={styles.headerSpacer} />
                 </View>
 
                 <View style={styles.emptyWrap}>
                     <View style={styles.emptyIcon}>
-                        <ShoppingBag
+                        <ShoppingCart
                             color={palette.primary}
                             size={34}
                             strokeWidth={2}
                         />
                     </View>
                     <ThemedText style={styles.emptyTitle}>
-                        Корзина пустая
+                        {t("cartEmpty")}
                     </ThemedText>
                     <ThemedText style={styles.emptyText}>
-                        Добавьте товары из каталога, и они появятся здесь.
+                        {t("cartEmptyText")}
                     </ThemedText>
                     <TouchableOpacity
                         activeOpacity={0.86}
@@ -176,7 +180,7 @@ export default function CartScreen() {
                         onPress={() => router.replace(catalogHref)}
                     >
                         <ThemedText style={styles.continueButtonText}>
-                            Продолжить покупки
+                            {t("continueShopping")}
                         </ThemedText>
                     </TouchableOpacity>
                 </View>
@@ -201,10 +205,10 @@ export default function CartScreen() {
                             strokeWidth={2.2}
                         />
                     </TouchableOpacity>
-                    <ThemedText style={styles.headerTitle}>Корзина</ThemedText>
+                    <ThemedText style={styles.headerTitle}>{t("cart")}</ThemedText>
                     <TouchableOpacity hitSlop={8} onPress={clear}>
                         <ThemedText style={styles.clearText}>
-                            Очистить
+                            {t("clear")}
                         </ThemedText>
                     </TouchableOpacity>
                 </View>
@@ -217,7 +221,7 @@ export default function CartScreen() {
             <View style={styles.bottomBar}>
                 <View style={styles.totalRow}>
                     <ThemedText style={styles.totalLabel}>
-                        Итого, {totalQuantity} шт.
+                        {t("totalItems")}, {totalQuantity} {t("pieces")}
                     </ThemedText>
                     <ThemedText style={styles.totalPrice}>
                         {formatPrice(totalPrice)}
@@ -229,7 +233,7 @@ export default function CartScreen() {
                     onPress={() => router.push("/checkout")}
                 >
                     <ThemedText style={styles.checkoutButtonText}>
-                        Оформить заказ
+                        {t("checkout")}
                     </ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -238,7 +242,7 @@ export default function CartScreen() {
                     onPress={() => router.replace(catalogHref)}
                 >
                     <ThemedText style={styles.continueOutlineButtonText}>
-                        Продолжить покупки
+                        {t("continueShopping")}
                     </ThemedText>
                 </TouchableOpacity>
             </View>

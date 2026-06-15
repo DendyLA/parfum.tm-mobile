@@ -92,6 +92,13 @@ export const styles = StyleSheet.create({
         lineHeight: 26,
         fontWeight: "900",
     },
+    productColumn: {
+        justifyContent: "space-between",
+        marginBottom: 20,
+    },
+    footer: {
+        gap: 12,
+    },
     loadingWrap: {
         flex: 1,
         minHeight: 360,

@@ -1,3 +1,5 @@
+import { translate } from "@/i18n";
+
 const API_BASE_URL = "https://parfum.com.tm/api/v1";
 
 export async function apiGet<T>(path: string): Promise<T> {
@@ -29,14 +31,11 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
             body: JSON.stringify(body),
         });
     } catch {
-        throw new Error(
-            "Нет соединения с интернетом. Проверьте сеть и попробуйте снова."
-        );
+        throw new Error(translate("networkError"));
     }
 
     if (!response.ok) {
-        let message =
-            "Не удалось отправить данные. Попробуйте еще раз.";
+        let message: string = translate("sendDataError");
 
         try {
             const errorBody = await response.json();
@@ -47,8 +46,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
             }
         } catch {
             if (response.status >= 500) {
-                message =
-                    "Сервер временно недоступен. Попробуйте чуть позже.";
+                message = translate("serverUnavailable");
             }
         }
 

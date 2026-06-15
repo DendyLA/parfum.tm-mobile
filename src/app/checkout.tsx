@@ -1,6 +1,6 @@
-import NetInfo from "@react-native-community/netinfo";
+﻿import NetInfo from "@react-native-community/netinfo";
 import { Href, useRouter } from "expo-router";
-import { ArrowLeft, Check, ShoppingBag } from "lucide-react-native";
+import { ArrowLeft, Check, ShoppingCart } from "lucide-react-native";
 import { useState } from "react";
 import {
     ActivityIndicator,
@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
 import { palette, styles } from "@/features/checkout/checkout.styles";
+import { useTranslations } from "@/i18n";
 import { createOrder } from "@/services/orders";
 import { useCartStore } from "@/store/cart";
 
@@ -35,6 +36,7 @@ function isOffline(isConnected: boolean | null, isInternetReachable: boolean | n
 
 export default function CheckoutScreen() {
     const router = useRouter();
+    const t = useTranslations();
     const items = useCartStore((state) => state.items);
     const clear = useCartStore((state) => state.clear);
     const totalPrice = useCartStore((state) => state.totalPrice());
@@ -58,19 +60,17 @@ export default function CheckoutScreen() {
 
     async function submitOrder() {
         if (!items.length) {
-            setError(
-                "Корзина пустая. Добавьте товары перед оформлением заказа."
-            );
+            setError(t("orderEmptyCart"));
             return;
         }
 
         if (!firstName.trim() || !phone.trim() || !address.trim()) {
-            setError("Заполните имя, телефон и адрес.");
+            setError(t("orderRequiredFields"));
             return;
         }
 
         if (!isValidPhone(phone)) {
-            setError("Введите корректный номер телефона.");
+            setError(t("orderPhoneInvalid"));
             return;
         }
 
@@ -81,9 +81,7 @@ export default function CheckoutScreen() {
                 networkState.isInternetReachable
             )
         ) {
-            setError(
-                "Для оформления заказа нужен интернет. Корзина сохранена, попробуйте отправить заказ позже."
-            );
+            setError(t("orderNeedsInternet"));
             return;
         }
 
@@ -106,7 +104,7 @@ export default function CheckoutScreen() {
             setError(
                 requestError instanceof Error
                     ? requestError.message
-                    : "Не удалось оформить заказ."
+                    : t("orderFailed")
             );
         } finally {
             setSubmitting(false);
@@ -118,17 +116,17 @@ export default function CheckoutScreen() {
             <SafeAreaView style={styles.root}>
                 <View style={styles.successWrap}>
                     <View style={styles.emptyIcon}>
-                        <ShoppingBag
+                        <ShoppingCart
                             color={palette.primary}
                             size={34}
                             strokeWidth={2}
                         />
                     </View>
                     <ThemedText style={styles.successTitle}>
-                        Корзина пустая
+                        {t("cartEmpty")}
                     </ThemedText>
                     <ThemedText style={styles.successText}>
-                        Добавьте товары в корзину, чтобы оформить заказ.
+                        {t("cartEmptyCheckout")}
                     </ThemedText>
                     <TouchableOpacity
                         activeOpacity={0.86}
@@ -136,7 +134,7 @@ export default function CheckoutScreen() {
                         onPress={() => router.replace(catalogHref)}
                     >
                         <ThemedText style={styles.submitButtonText}>
-                            Перейти в каталог
+                            {t("goToCatalog")}
                         </ThemedText>
                     </TouchableOpacity>
                 </View>
@@ -156,11 +154,12 @@ export default function CheckoutScreen() {
                         />
                     </View>
                     <ThemedText style={styles.successTitle}>
-                        Заказ принят
+                        {t("orderAccepted")}
                     </ThemedText>
                     <ThemedText style={styles.successText}>
-                        Номер заказа #{createdOrderId}. Мы свяжемся с вами для
-                        подтверждения.
+                        {t("orderConfirmPrefix")}
+                        {createdOrderId}
+                        {t("orderConfirmSuffix")}
                     </ThemedText>
                     <TouchableOpacity
                         activeOpacity={0.86}
@@ -168,7 +167,7 @@ export default function CheckoutScreen() {
                         onPress={() => router.replace(catalogHref)}
                     >
                         <ThemedText style={styles.submitButtonText}>
-                            Вернуться в каталог
+                            {t("goToCatalog")}
                         </ThemedText>
                     </TouchableOpacity>
                 </View>
@@ -199,22 +198,22 @@ export default function CheckoutScreen() {
                             />
                         </TouchableOpacity>
                         <ThemedText style={styles.headerTitle}>
-                            Оформление
+                            {t("checkout")}
                         </ThemedText>
                         <View style={styles.headerSpacer} />
                     </View>
 
                     <View style={styles.section}>
                         <ThemedText style={styles.sectionTitle}>
-                            Контакты
+                            {t("contacts")}
                         </ThemedText>
 
                         <View style={styles.field}>
-                            <ThemedText style={styles.label}>Имя</ThemedText>
+                            <ThemedText style={styles.label}>{t("name")}</ThemedText>
                             <TextInput
                                 value={firstName}
                                 onChangeText={setFirstName}
-                                placeholder="Например, Азат"
+                                placeholder={t("namePlaceholder")}
                                 placeholderTextColor={palette.secondary}
                                 style={styles.input}
                                 returnKeyType="next"
@@ -223,7 +222,7 @@ export default function CheckoutScreen() {
 
                         <View style={styles.field}>
                             <ThemedText style={styles.label}>
-                                Телефон
+                                {t("phone")}
                             </ThemedText>
                             <TextInput
                                 value={phone}
@@ -237,12 +236,12 @@ export default function CheckoutScreen() {
 
                         <View style={styles.field}>
                             <ThemedText style={styles.label}>
-                                Адрес
+                                {t("address")}
                             </ThemedText>
                             <TextInput
                                 value={address}
                                 onChangeText={setAddress}
-                                placeholder="Город, улица, дом"
+                                placeholder={t("addressPlaceholder")}
                                 placeholderTextColor={palette.secondary}
                                 style={[styles.input, styles.multilineInput]}
                                 multiline
@@ -251,12 +250,12 @@ export default function CheckoutScreen() {
 
                         <View style={styles.field}>
                             <ThemedText style={styles.label}>
-                                Комментарий
+                                {t("comment")}
                             </ThemedText>
                             <TextInput
                                 value={comment}
                                 onChangeText={setComment}
-                                placeholder="Удобное время, детали доставки"
+                                placeholder={t("commentPlaceholder")}
                                 placeholderTextColor={palette.secondary}
                                 style={[styles.input, styles.multilineInput]}
                                 multiline
@@ -273,15 +272,15 @@ export default function CheckoutScreen() {
                     <View style={styles.orderPreview}>
                         <View style={styles.previewRow}>
                             <ThemedText style={styles.previewLabel}>
-                                Товары
+                                {t("products")}
                             </ThemedText>
                             <ThemedText style={styles.previewValue}>
-                                {totalQuantity} шт.
+                                {totalQuantity} {t("pieces")}
                             </ThemedText>
                         </View>
                         <View style={styles.previewRow}>
                             <ThemedText style={styles.previewLabel}>
-                                Сумма
+                                {t("subtotal")}
                             </ThemedText>
                             <ThemedText style={styles.previewValue}>
                                 {formatPrice(totalPrice)}
@@ -293,7 +292,7 @@ export default function CheckoutScreen() {
                 <View style={styles.bottomBar}>
                     <View style={styles.totalRow}>
                         <ThemedText style={styles.totalLabel}>
-                            К оплате
+                            {t("orderTotal")}
                         </ThemedText>
                         <ThemedText style={styles.totalPrice}>
                             {formatPrice(totalPrice)}
@@ -312,7 +311,7 @@ export default function CheckoutScreen() {
                             <ActivityIndicator color={palette.surface} />
                         ) : (
                             <ThemedText style={styles.submitButtonText}>
-                                Отправить заказ
+                                {t("checkoutSubmit")}
                             </ThemedText>
                         )}
                     </TouchableOpacity>

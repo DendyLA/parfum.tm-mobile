@@ -6,30 +6,33 @@ import {
     TabTriggerSlotProps,
     TabListProps,
 } from "expo-router/ui";
-import { Pressable, View, StyleSheet } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+
+import { MaxContentWidth, Spacing } from "@/constants/theme";
+import { useTranslations } from "@/i18n";
 
 import { ThemedText } from "./themed-text";
 import { ThemedView } from "./themed-view";
 
-import { MaxContentWidth, Spacing } from "@/constants/theme";
-
 export default function AppTabs() {
+    const t = useTranslations();
+
     return (
         <Tabs>
             <TabSlot style={{ height: "100%" }} />
             <TabList asChild>
                 <CustomTabList>
                     <TabTrigger name="home" href="/(tabs)" asChild>
-                        <TabButton>Главная</TabButton>
+                        <TabButton>{t("home")}</TabButton>
                     </TabTrigger>
                     <TabTrigger name="categories" href="/categories" asChild>
-                        <TabButton>Категории</TabButton>
+                        <TabButton>{t("categories")}</TabButton>
                     </TabTrigger>
                     <TabTrigger name="favorites" href="/favorites" asChild>
-                        <TabButton>Избранное</TabButton>
+                        <TabButton>{t("favorites")}</TabButton>
                     </TabTrigger>
                     <TabTrigger name="cart" href="/cart" asChild>
-                        <TabButton>Корзина</TabButton>
+                        <TabButton>{t("cart")}</TabButton>
                     </TabTrigger>
                 </CustomTabList>
             </TabList>

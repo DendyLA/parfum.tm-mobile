@@ -1,4 +1,4 @@
-import { useNetInfo } from "@react-native-community/netinfo";
+﻿import { useNetInfo } from "@react-native-community/netinfo";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -7,7 +7,7 @@ import {
     Heart,
     Minus,
     Plus,
-    ShoppingBag,
+    ShoppingCart,
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
@@ -21,18 +21,41 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ProductDetailSkeleton } from "@/components/skeleton";
 import { ThemedText } from "@/components/themed-text";
-import { getProductBySlug, ProductDetail } from "@/services/catalog";
 import {
     descriptionHtmlBaseStyle,
     descriptionHtmlTags,
     palette,
     styles,
 } from "@/features/product-detail/product-detail.styles";
+import { useTranslations } from "@/i18n";
+import { getProductBySlug, ProductDetail } from "@/services/catalog";
 import { CartVariation, useCartStore } from "@/store/cart";
 import { useFavoriteStore } from "@/store/favorites";
 
 function normalizeProductHtml(value: string) {
-    return value.replace(/&nbsp;|&#160;|&#xA0;/gi, " ").replace(/\u00a0/g, " ");
+    let html = value
+        .replace(/<!--[\s\S]*?-->/g, "")
+        .replace(/&nbsp;|&#160;|&#xA0;/gi, " ")
+        .replace(/\u00a0/g, " ")
+        .replace(/<br\s*\/?>/gi, "\n");
+
+    const emptyTagPattern =
+        /<(p|div|li)\b[^>]*>(?:\s|<br\s*\/?>|&nbsp;|&#160;|&#xA0;)*<\/\1>/gi;
+    const emptyListPattern =
+        /<(ul|ol)\b[^>]*>(?:\s|<br\s*\/?>|&nbsp;|&#160;|&#xA0;)*<\/\1>/gi;
+
+    let previous = "";
+    while (previous !== html) {
+        previous = html;
+        html = html
+            .replace(emptyTagPattern, "")
+            .replace(emptyListPattern, "");
+    }
+
+    return html
+        .replace(/\n{3,}/g, "\n\n")
+        .replace(/>\s+</g, "><")
+        .trim();
 }
 
 function getTextFromHtml(value: string) {
@@ -44,6 +67,7 @@ function getTextFromHtml(value: string) {
 
 export default function ProductDetailScreen() {
     const router = useRouter();
+    const t = useTranslations();
     const netInfo = useNetInfo();
     const { width } = useWindowDimensions();
     const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -103,10 +127,10 @@ export default function ProductDetailScreen() {
                 if (alive) {
                     setError(
                         isOffline
-                            ? "Нет интернета. Этот товар еще не сохранен для оффлайна."
+                            ? t("productOfflineMissing")
                             : requestError instanceof Error
                             ? requestError.message
-                            : "Не удалось загрузить товар"
+                            : t("productLoadError")
                     );
                 }
             } finally {
@@ -133,7 +157,7 @@ export default function ProductDetailScreen() {
             <SafeAreaView style={styles.root}>
                 <View style={styles.loadingWrap}>
                     <ThemedText style={styles.statusText}>
-                        {error || "Товар не найден"}
+                        {error || t("productNotFound")}
                     </ThemedText>
                     <TouchableOpacity
                         style={styles.backButton}
@@ -166,7 +190,7 @@ export default function ProductDetailScreen() {
         Array.from({ length: quantityToAdd }).forEach(() =>
             addItem(product, selectedVariation)
         );
-        setAddedMessage(`Добавлено: ${quantityToAdd} шт.`);
+        setAddedMessage(`${t("added")}: ${quantityToAdd} ${t("pieces")}`);
         setTimeout(() => setAddedMessage(""), 1800);
     }
 
@@ -208,7 +232,7 @@ export default function ProductDetailScreen() {
                             strokeWidth={2.2}
                         />
                     </TouchableOpacity>
-                    <ThemedText style={styles.headerTitle}>Товар</ThemedText>
+                    <ThemedText style={styles.headerTitle}>{t("product")}</ThemedText>
                     <View style={styles.headerActions}>
                         <TouchableOpacity
                             style={styles.headerIconButton}
@@ -227,7 +251,7 @@ export default function ProductDetailScreen() {
                             style={styles.headerIconButton}
                             onPress={() => router.push("/cart")}
                         >
-                            <ShoppingBag
+                            <ShoppingCart
                                 color={palette.primary}
                                 size={21}
                                 strokeWidth={2.1}
@@ -247,12 +271,14 @@ export default function ProductDetailScreen() {
                     {visibleImage ? (
                         <Image
                             source={{ uri: visibleImage }}
+                            cachePolicy="memory-disk"
+                            recyclingKey={`product-detail-${product.id}-${visibleImage}`}
                             contentFit="contain"
                             style={styles.image}
                         />
                     ) : (
                         <ThemedText style={styles.imageFallback}>
-                            Нет фото
+                            {t("noImage")}
                         </ThemedText>
                     )}
                 </View>
@@ -277,6 +303,8 @@ export default function ProductDetailScreen() {
                                 {image.image ? (
                                     <Image
                                         source={{ uri: image.image }}
+                                        cachePolicy="memory-disk"
+                                        recyclingKey={`product-gallery-${image.id}`}
                                         contentFit="contain"
                                         style={styles.galleryImage}
                                     />
@@ -314,7 +342,7 @@ export default function ProductDetailScreen() {
                 {product.variations.length ? (
                     <View style={styles.section}>
                         <ThemedText style={styles.sectionTitle}>
-                            Варианты
+                            {t("variants")}
                         </ThemedText>
                         <View style={styles.variationList}>
                             {product.variations.map((variation) => (
@@ -355,14 +383,16 @@ export default function ProductDetailScreen() {
                 {descriptionText ? (
                     <View style={styles.section}>
                         <ThemedText style={styles.sectionTitle}>
-                            Описание
+                            {t("description")}
                         </ThemedText>
-                        <RenderHTML
-                            contentWidth={width - 32}
-                            source={{ html: descriptionHtml }}
-                            baseStyle={descriptionHtmlBaseStyle}
-                            tagsStyles={descriptionHtmlTags}
-                        />
+                        <View style={styles.descriptionCard}>
+                            <RenderHTML
+                                contentWidth={width - 56}
+                                source={{ html: descriptionHtml }}
+                                baseStyle={descriptionHtmlBaseStyle}
+                                tagsStyles={descriptionHtmlTags}
+                            />
+                        </View>
                     </View>
                 ) : null}
             </ScrollView>
@@ -370,7 +400,7 @@ export default function ProductDetailScreen() {
             <View style={styles.bottomBar}>
                 <View style={styles.quantityRow}>
                     <ThemedText style={styles.quantityLabel}>
-                        Количество
+                        {t("quantity")}
                     </ThemedText>
                     <View style={styles.quantityControl}>
                         <TouchableOpacity
@@ -436,7 +466,7 @@ export default function ProductDetailScreen() {
                     onPress={addProductToCart}
                 >
                     <ThemedText style={styles.cartButtonText}>
-                        {outOfStock ? "Нет в наличии" : "В корзину"}
+                        {outOfStock ? t("notInStock") : t("addToCart")}
                     </ThemedText>
                 </TouchableOpacity>
             </View>
