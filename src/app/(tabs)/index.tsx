@@ -1,5 +1,5 @@
 ﻿import { useNetInfo } from "@react-native-community/netinfo";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
     BackHandler,
@@ -46,6 +46,7 @@ const PAGE_SIZE = 10;
 
 export default function HomeScreen() {
     const netInfo = useNetInfo();
+    const router = useRouter();
     const language = useLanguageStore((state) => state.language);
     const t = useTranslations();
     const brandSortOptions = [
@@ -519,23 +520,14 @@ export default function HomeScreen() {
         }
     }
 
-    async function selectBrand(brand: BrandItem) {
-        setShowBrands(false);
-        setSelectedBrand(brand);
-        setSelectedCategory(null);
-        setSaleOnly(false);
-        setNewOnly(false);
-        setRecommendedOnly(false);
-        setActiveSearch("");
-        setSearchText("");
-        setSearchProducts([]);
-        setSearchSuggestions([]);
-        setFeedProducts([]);
-        setFeedPage(1);
-        setFeedHasMore(true);
-        scrollToTop(true);
-
-        setCategoryLoading(true);
+    function selectBrand(brand: BrandItem) {
+        router.push({
+            pathname: "/brands/[id]",
+            params: {
+                id: String(brand.id),
+                name: brand.name,
+            },
+        });
     }
 
     useEffect(() => {

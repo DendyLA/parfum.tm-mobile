@@ -131,6 +131,12 @@ export default function AppTabs() {
                     ),
                 }}
             />
+            <Tabs.Screen
+                name="brands/[id]"
+                options={{
+                    href: null,
+                }}
+            />
         </Tabs>
     );
 }

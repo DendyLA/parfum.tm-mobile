@@ -33,8 +33,9 @@ yarn-error.*
 # local env files
 .env*.local
 
+*.apk
 # Firebase / Google credentials
-google-services.json
+# google-services.json
 GoogleService-Info.plist
 *service-account*.json
 *firebase-adminsdk*.json

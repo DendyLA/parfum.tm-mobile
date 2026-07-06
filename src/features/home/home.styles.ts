@@ -230,6 +230,13 @@ export const styles = StyleSheet.create({
         lineHeight: 18,
         fontWeight: "800",
     },
+    brandsScreen: {
+        flex: 1,
+        backgroundColor: palette.surface,
+    },
+    brandsList: {
+        flex: 1,
+    },
     brandsPanel: {
         gap: 18,
         paddingHorizontal: 16,
@@ -241,6 +248,15 @@ export const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: 12,
+    },
+    brandsFixedHeader: {
+        flexShrink: 0,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: palette.border,
+        backgroundColor: palette.surface,
+        zIndex: 2,
     },
     brandsBack: {
         width: 42,

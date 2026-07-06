@@ -390,8 +390,8 @@ export function BrandsPanel({
 
     if (loading) {
         return (
-            <View style={styles.brandsPanel}>
-                <View style={styles.brandsHeader}>
+            <View style={styles.brandsScreen}>
+                <View style={[styles.brandsHeader, styles.brandsFixedHeader]}>
                     <TouchableOpacity
                         activeOpacity={0.82}
                         style={styles.brandsBack}
@@ -413,58 +413,59 @@ export function BrandsPanel({
     }
 
     return (
-        <SectionList
-            sections={sections}
-            keyExtractor={(item) => String(item.id)}
-            stickySectionHeadersEnabled={false}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-                onRefresh ? (
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                        tintColor={palette.primary}
-                        colors={[palette.primary]}
-                    />
-                ) : undefined
-            }
-            contentContainerStyle={styles.brandsPanel}
-            initialNumToRender={24}
-            maxToRenderPerBatch={24}
-            windowSize={9}
-            ListHeaderComponent={
-                <View style={styles.brandsHeader}>
-                    <TouchableOpacity
-                        activeOpacity={0.82}
-                        style={styles.brandsBack}
-                        onPress={onBack}
-                    >
-                        <ArrowLeft
-                            color={palette.primary}
-                            size={21}
-                            strokeWidth={2.2}
-                        />
-                    </TouchableOpacity>
-                    <ThemedText style={styles.brandsTitle}>{t("brands")}</ThemedText>
-                </View>
-            }
-            renderSectionHeader={({ section }) => (
-                <ThemedText style={styles.brandLetter}>
-                    {section.title}
-                </ThemedText>
-            )}
-            renderItem={({ item }) => (
+        <View style={styles.brandsScreen}>
+            <View style={[styles.brandsHeader, styles.brandsFixedHeader]}>
                 <TouchableOpacity
                     activeOpacity={0.82}
-                    style={styles.brandItem}
-                    onPress={() => onSelectBrand(item)}
+                    style={styles.brandsBack}
+                    onPress={onBack}
                 >
-                    <ThemedText style={styles.brandName}>
-                        {item.name}
-                    </ThemedText>
+                    <ArrowLeft
+                        color={palette.primary}
+                        size={21}
+                        strokeWidth={2.2}
+                    />
                 </TouchableOpacity>
-            )}
-        />
+                <ThemedText style={styles.brandsTitle}>{t("brands")}</ThemedText>
+            </View>
+            <SectionList
+                style={styles.brandsList}
+                sections={sections}
+                keyExtractor={(item) => String(item.id)}
+                stickySectionHeadersEnabled={false}
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    onRefresh ? (
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            tintColor={palette.primary}
+                            colors={[palette.primary]}
+                        />
+                    ) : undefined
+                }
+                contentContainerStyle={styles.brandsPanel}
+                initialNumToRender={24}
+                maxToRenderPerBatch={24}
+                windowSize={9}
+                renderSectionHeader={({ section }) => (
+                    <ThemedText style={styles.brandLetter}>
+                        {section.title}
+                    </ThemedText>
+                )}
+                renderItem={({ item }) => (
+                    <TouchableOpacity
+                        activeOpacity={0.82}
+                        style={styles.brandItem}
+                        onPress={() => onSelectBrand(item)}
+                    >
+                        <ThemedText style={styles.brandName}>
+                            {item.name}
+                        </ThemedText>
+                    </TouchableOpacity>
+                )}
+            />
+        </View>
     );
 
 }

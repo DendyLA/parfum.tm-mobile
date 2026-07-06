@@ -1,9 +1,14 @@
 import { useNetInfo } from "@react-native-community/netinfo";
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import {
+    useFocusEffect,
+    useLocalSearchParams,
+    useNavigation,
+} from "expo-router";
 import { ArrowLeft, ChevronRight } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
+    BackHandler,
     DeviceEventEmitter,
     FlatList,
     ListRenderItemInfo,
@@ -30,6 +35,18 @@ import { getCacheMeta } from "@/services/cache";
 import { useLanguageStore } from "@/store/language";
 
 const PAGE_SIZE = 10;
+
+type BeforeRemoveEvent = {
+    data: { action: { type: string } };
+    preventDefault: () => void;
+};
+
+type BackAwareNavigation = {
+    addListener: (
+        event: "beforeRemove",
+        callback: (event: BeforeRemoveEvent) => void
+    ) => () => void;
+};
 
 function getProductsCacheKey({
     categoryId,
@@ -74,6 +91,7 @@ function getCategoryPath(category: CategoryItem, categories: CategoryItem[]) {
 
 export default function CategoriesScreen() {
     const netInfo = useNetInfo();
+    const navigation = useNavigation() as unknown as BackAwareNavigation;
     const t = useTranslations();
     const language = useLanguageStore((state) => state.language);
     const listRef = useRef<FlatList<ProductItem>>(null);
@@ -168,7 +186,7 @@ export default function CategoriesScreen() {
             (category) => category.id === routeCategoryId
         );
 
-        if (routeCategory && selectedCategory?.id !== routeCategory.id) {
+        if (routeCategory) {
             setSelectedCategory(routeCategory);
             setProducts([]);
         }
@@ -176,7 +194,6 @@ export default function CategoriesScreen() {
         categories,
         routeParams.categoryId,
         routeParams.discountOnly,
-        selectedCategory?.id,
         scrollToTop,
     ]);
 
@@ -275,16 +292,46 @@ export default function CategoriesScreen() {
         ? getCategoryPath(selectedCategory, categories)
         : [];
 
+    const goBackLevel = useCallback(() => {
+        setSelectedCategory(parentCategory);
+        setProducts([]);
+        scrollToTop(true);
+    }, [parentCategory, scrollToTop]);
+
+    useEffect(() => {
+        return navigation.addListener("beforeRemove", (event) => {
+            if (
+                !selectedCategory ||
+                event.data.action.type !== "GO_BACK"
+            ) {
+                return;
+            }
+
+            event.preventDefault();
+            goBackLevel();
+        });
+    }, [goBackLevel, navigation, selectedCategory]);
+
+    useFocusEffect(
+        useCallback(() => {
+            const subscription = BackHandler.addEventListener(
+                "hardwareBackPress",
+                () => {
+                    if (!selectedCategory) return false;
+
+                    goBackLevel();
+                    return true;
+                }
+            );
+
+            return () => subscription.remove();
+        }, [goBackLevel, selectedCategory])
+    );
+
     function selectCategory(category: CategoryItem) {
         if (selectedCategory?.id === category.id) return;
 
         setSelectedCategory(category);
-        setProducts([]);
-        scrollToTop(true);
-    }
-
-    function goBackLevel() {
-        setSelectedCategory(parentCategory);
         setProducts([]);
         scrollToTop(true);
     }
@@ -572,22 +619,24 @@ export default function CategoriesScreen() {
                     </>
                 }
             />
-            <View pointerEvents="box-none" style={styles.fixedBackBar}>
-                <TouchableOpacity
-                    activeOpacity={0.84}
-                    style={styles.backButton}
-                    onPress={selectedCategory ? goBackLevel : resetToRoot}
-                >
-                    <ArrowLeft
-                        color={palette.primary}
-                        size={19}
-                        strokeWidth={2.2}
-                    />
-                    <ThemedText style={styles.backButtonText}>
-                        {selectedCategory ? t("back") : t("mainCategories")}
-                    </ThemedText>
-                </TouchableOpacity>
-            </View>
+            {selectedCategory ? (
+                <View pointerEvents="box-none" style={styles.fixedBackBar}>
+                    <TouchableOpacity
+                        activeOpacity={0.84}
+                        style={styles.backButton}
+                        onPress={goBackLevel}
+                    >
+                        <ArrowLeft
+                            color={palette.primary}
+                            size={19}
+                            strokeWidth={2.2}
+                        />
+                        <ThemedText style={styles.backButtonText}>
+                            {t("back")}
+                        </ThemedText>
+                    </TouchableOpacity>
+                </View>
+            ) : null}
         </SafeAreaView>
     );
 }
