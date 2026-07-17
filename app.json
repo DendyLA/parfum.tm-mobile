@@ -8,7 +8,8 @@
         "scheme": "mobile",
         "userInterfaceStyle": "automatic",
         "ios": {
-            "icon": "./assets/images/parfum-ios-icon.png"
+            "icon": "./assets/images/parfum-ios-icon.png",
+            "bundleIdentifier": "com.dendyla.parfumtm"
         },
         "android": {
             "adaptiveIcon": {
@@ -26,6 +27,7 @@
         },
         "plugins": [
             "expo-router",
+            "expo-image",
             [
                 "expo-splash-screen",
                 {
